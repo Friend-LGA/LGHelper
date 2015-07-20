@@ -1595,22 +1595,22 @@ static NSUInteger const kActionSheetTagImagePicker = 1;
 
 #pragma mark - Animations
 
-+ (void)animateStandartWithAnimations:(void(^)())animations completion:(void(^)(BOOL finished))completion
++ (void)animateStandardWithAnimations:(void(^)())animations completion:(void(^)(BOOL finished))completion
 {
-    [LGHelper animateStandartWithDuration:0.5 delay:0.0 animations:animations completion:completion];
+    [LGHelper animateStandardWithDuration:0.5 delay:0.0 animations:animations completion:completion];
 }
 
-+ (void)animateStandartWithDuration:(NSTimeInterval)duration animations:(void(^)())animations completion:(void(^)(BOOL finished))completion
++ (void)animateStandardWithDuration:(NSTimeInterval)duration animations:(void(^)())animations completion:(void(^)(BOOL finished))completion
 {
-    [LGHelper animateStandartWithDuration:duration delay:0.0 animations:animations completion:completion];
+    [LGHelper animateStandardWithDuration:duration delay:0.0 animations:animations completion:completion];
 }
 
-+ (void)animateStandartWithDelay:(NSTimeInterval)delay animations:(void(^)())animations completion:(void(^)(BOOL finished))completion
++ (void)animateStandardWithDelay:(NSTimeInterval)delay animations:(void(^)())animations completion:(void(^)(BOOL finished))completion
 {
-    [LGHelper animateStandartWithDuration:0.5 delay:delay animations:animations completion:completion];
+    [LGHelper animateStandardWithDuration:0.5 delay:delay animations:animations completion:completion];
 }
 
-+ (void)animateStandartWithDuration:(NSTimeInterval)duration delay:(NSTimeInterval)delay animations:(void(^)())animations completion:(void(^)(BOOL finished))completion
++ (void)animateStandardWithDuration:(NSTimeInterval)duration delay:(NSTimeInterval)delay animations:(void(^)())animations completion:(void(^)(BOOL finished))completion
 {
     if (kSystemVersion >= 7.0)
     {

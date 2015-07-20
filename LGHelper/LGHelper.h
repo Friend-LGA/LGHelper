@@ -209,9 +209,9 @@
 
 #pragma mark - Recomended touch area sizes
 
-#define kSizeStandartSmall  32.f
-#define kSizeStandartMedium 44.f
-#define kSizeStandartLarge  64.f
+#define kSizeStandardSmall  32.f
+#define kSizeStandardMedium 44.f
+#define kSizeStandardLarge  64.f
 
 // --------------------------------------------------
 
@@ -552,10 +552,10 @@ LGInternetStatus;
 
 #pragma mark - Animations
 
-+ (void)animateStandartWithAnimations:(void(^)())animations completion:(void(^)(BOOL finished))completion;
-+ (void)animateStandartWithDuration:(NSTimeInterval)duration animations:(void(^)())animations completion:(void(^)(BOOL finished))completion;
-+ (void)animateStandartWithDelay:(NSTimeInterval)delay animations:(void(^)())animations completion:(void(^)(BOOL finished))completion;
-+ (void)animateStandartWithDuration:(NSTimeInterval)duration delay:(NSTimeInterval)delay animations:(void(^)())animations completion:(void(^)(BOOL finished))completion;
++ (void)animateStandardWithAnimations:(void(^)())animations completion:(void(^)(BOOL finished))completion;
++ (void)animateStandardWithDuration:(NSTimeInterval)duration animations:(void(^)())animations completion:(void(^)(BOOL finished))completion;
++ (void)animateStandardWithDelay:(NSTimeInterval)delay animations:(void(^)())animations completion:(void(^)(BOOL finished))completion;
++ (void)animateStandardWithDuration:(NSTimeInterval)duration delay:(NSTimeInterval)delay animations:(void(^)())animations completion:(void(^)(BOOL finished))completion;
 
 #pragma mark - Colors
 

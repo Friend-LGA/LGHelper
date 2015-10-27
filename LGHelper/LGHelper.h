@@ -147,24 +147,12 @@
 #pragma mark - GDC
 
 #define dispatch_sync_main_safe(block)\
-    if ([NSThread isMainThread])\
-    {\
-        block();\
-    }\
-    else\
-    {\
-        dispatch_sync(dispatch_get_main_queue(), block);\
-    }\
+if ([NSThread isMainThread]) { block(); }\
+else { dispatch_sync(dispatch_get_main_queue(), block); }
 
 #define dispatch_async_main_safe(block)\
-    if ([NSThread isMainThread])\
-    {\
-        block();\
-    }\
-    else\
-    {\
-        dispatch_async(dispatch_get_main_queue(), block);\
-    }\
+if ([NSThread isMainThread]) { block(); }\
+else { dispatch_async(dispatch_get_main_queue(), block); }\
 
 #define dispatch_sync_main(block)   dispatch_sync(dispatch_get_main_queue(), block)
 #define dispatch_async_main(block)  dispatch_async(dispatch_get_main_queue(), block)
@@ -486,6 +474,8 @@ LGInternetStatus;
 
 + (void)keyboardNotificationsAddToTarget:(id)target selector:(SEL)selector;
 + (void)keyboardNotificationsRemoveFromTarget:(id)target selector:(SEL)selector;
++ (void)keyboardNotificationsAddToScrollView:(UIScrollView *)scrollView;
++ (void)keyboardNotificationsRemoveFromScrollView:(UIScrollView *)scrollView;
 + (void)keyboardAnimateWithNotificationUserInfo:(NSDictionary *)notificationUserInfo animations:(void(^)(CGFloat keyboardHeight))animations;
 
 #pragma mark - Disk capacity
@@ -590,7 +580,7 @@ LGInternetStatus;
 
 + (BOOL)emailIsCorrect:(NSString *)string;
 
-/** 
+/**
  Return NO if device can not send mail.
  Do not forget about weak referens to self for completionHandler and dismissCompletionHandler blocks.
  */
@@ -618,7 +608,7 @@ LGInternetStatus;
 
 + (BOOL)phoneNumberIsCorrect:(NSString *)string;
 
-/** 
+/**
  Return NO if device can not send text.
  Do not forget about weak referens to self for completionHandler and dismissCompletionHandler blocks.
  */
@@ -685,7 +675,7 @@ presentCompletionHandler:(void(^)())presentCompletionHandler;
 
 #pragma mark - UIDocumentInteractionController
 
-/** 
+/**
  Returns NO if the item could not be previewed.
  Do not forget about weak referens to self for didEndPreviewHandler block.
  */
@@ -716,7 +706,7 @@ presentCompletionHandler:(void(^)())presentCompletionHandler;
 #pragma mark - MWPhotoBrowser
 
 // - (void)photoBrowserShow
- 
+
 #pragma mark - Processor
 
 // - (NSUInteger)processorNumberOfCores;

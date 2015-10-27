@@ -77,6 +77,9 @@ static NSUInteger const kActionSheetTagImagePicker = 1;
 @property (strong, nonatomic) void (^documentInteractionDidEndPreviewHandler)();
 @property (assign, nonatomic) id<UIDocumentInteractionControllerDelegate> documentInteractionDelegate;
 
+@property (assign, nonatomic, getter=isKeyboardNotificationsExists) BOOL keyboardNotificationsExists;
+@property (strong, nonatomic) NSMutableArray *keyboardNotificationsScrollViews;
+
 @end
 
 @implementation LGHelper
@@ -85,12 +88,12 @@ static NSUInteger const kActionSheetTagImagePicker = 1;
 {
     static dispatch_once_t once;
     static id sharedManager;
-    
+
     dispatch_once(&once, ^(void)
                   {
                       sharedManager = [super new];
                   });
-    
+
     return sharedManager;
 }
 
@@ -100,16 +103,16 @@ static NSUInteger const kActionSheetTagImagePicker = 1;
 {
     struct utsname systemInfo;
     uname(&systemInfo);
-    
+
     NSString *platform = [NSString stringWithCString:systemInfo.machine encoding:NSUTF8StringEncoding];
-    
+
     return platform;
 }
 
 + (NSString *)deviceName
 {
     NSString *platform = [LGHelper devicePlatform];
-    
+
     if ([platform isEqualToString:@"iPhone1,1"])    return @"iPhone 2G";
     if ([platform isEqualToString:@"iPhone1,2"])    return @"iPhone 3G";
     if ([platform isEqualToString:@"iPhone2,1"])    return @"iPhone 3GS";
@@ -123,13 +126,13 @@ static NSUInteger const kActionSheetTagImagePicker = 1;
     if ([platform isEqualToString:@"iPhone5,4"])    return @"iPhone 5c (UK+Europe+Asia+China)";
     if ([platform isEqualToString:@"iPhone6,1"])    return @"iPhone 5s (GSM+CDMA)";
     if ([platform isEqualToString:@"iPhone6,2"])    return @"iPhone 5s (UK+Europe+Asia+China)";
-    
+
     if ([platform isEqualToString:@"iPod1,1"])      return @"iPod Touch (1 Gen)";
     if ([platform isEqualToString:@"iPod2,1"])      return @"iPod Touch (2 Gen)";
     if ([platform isEqualToString:@"iPod3,1"])      return @"iPod Touch (3 Gen)";
     if ([platform isEqualToString:@"iPod4,1"])      return @"iPod Touch (4 Gen)";
     if ([platform isEqualToString:@"iPod5,1"])      return @"iPod Touch (5 Gen)";
-    
+
     if ([platform isEqualToString:@"iPad1,1"])      return @"iPad";
     if ([platform isEqualToString:@"iPad1,2"])      return @"iPad 3G";
     if ([platform isEqualToString:@"iPad2,1"])      return @"iPad 2 (WiFi)";
@@ -149,10 +152,10 @@ static NSUInteger const kActionSheetTagImagePicker = 1;
     if ([platform isEqualToString:@"iPad4,2"])      return @"iPad Air (GSM+CDMA)";
     if ([platform isEqualToString:@"iPad4,4"])      return @"iPad Mini Retina (WiFi)";
     if ([platform isEqualToString:@"iPad4,5"])      return @"iPad Mini Retina (GSM+CDMA)";
-    
+
     if ([platform isEqualToString:@"i386"])         return @"Simulator";
     if ([platform isEqualToString:@"x86_64"])       return @"Simulator";
-    
+
     return platform;
 }
 
@@ -162,32 +165,32 @@ static NSUInteger const kActionSheetTagImagePicker = 1;
 {
     UIView *superView = view.superview;
     UIView *foundSuperView = nil;
-    
+
     while (nil != superView && nil == foundSuperView)
     {
         if ([superView isKindOfClass:superViewClass]) foundSuperView = superView;
         else superView = superView.superview;
     }
-    
+
     return foundSuperView;
 }
 
 + (UIView *)firstResponderInView:(UIView *)view
 {
     if (!view.subviews.count) return nil;
-    
+
     UIView *firstResponderView = nil;
-    
+
     for (UIView *subview in view.subviews)
     {
         if (subview.canBecomeFirstResponder && subview.isFirstResponder)
             firstResponderView = subview;
         else
             firstResponderView = [LGHelper firstResponderInView:subview];
-        
+
         if (firstResponderView) break;
     }
-    
+
     return firstResponderView;
 }
 
@@ -199,7 +202,7 @@ static NSUInteger const kActionSheetTagImagePicker = 1;
     rect.origin.y -= edgeInsets.top;
     rect.size.width += (edgeInsets.left+edgeInsets.right);
     rect.size.height += (edgeInsets.top+edgeInsets.bottom);
-    
+
     [scrollView scrollRectToVisible:rect animated:animated];
 }
 
@@ -207,7 +210,7 @@ static NSUInteger const kActionSheetTagImagePicker = 1;
 {
     UIView *firstResponderView = [LGHelper firstResponderInView:scrollView];
     if (!firstResponderView) return;
-    
+
     [scrollView scrollRectToVisible:firstResponderView.frame animated:animated];
 }
 
@@ -215,7 +218,7 @@ static NSUInteger const kActionSheetTagImagePicker = 1;
 {
     UIView *firstResponderView = [LGHelper firstResponderInView:scrollView];
     if (!firstResponderView) return;
-    
+
     [LGHelper scrollView:scrollView scrollRectToVisible:firstResponderView.frame edgeInsets:edgeInsets animated:animated];
 }
 
@@ -225,39 +228,39 @@ static NSUInteger const kActionSheetTagImagePicker = 1;
     if ([view isKindOfClass:[UITextView class]])
     {
         UITextView *textView = (UITextView *)view;
-        
+
         viewRect = [textView caretRectForPosition:textView.selectedTextRange.start];
     }
     else if ([view isKindOfClass:[UITextField class]])
     {
         UITextField *textField = (UITextField *)view;
-        
+
         viewRect = [textField caretRectForPosition:textField.selectedTextRange.start];
     }
-    
+
     // if the control is a deep in the hierarchy below the scroll view, this will calculate the frame as if it were a direct subview
     CGRect controlFrameInScrollView = [scrollView convertRect:viewRect fromView:view];
-    
+
     // replace bottomShift with any nice visual offset between control and keyboard or control and top of the scroll view.
     controlFrameInScrollView.size.height += bottomShift;
-    
+
     CGFloat controlVisualOffsetToTopOfScrollView = controlFrameInScrollView.origin.y - scrollView.contentOffset.y;
     CGFloat controlVisualBottom = controlVisualOffsetToTopOfScrollView + controlFrameInScrollView.size.height;
-    
+
     // this is the visible part of the scroll view
     CGFloat scrollViewVisibleHeight = scrollView.frame.size.height - scrollView.contentInset.bottom;
-    
+
     if (controlVisualBottom > scrollViewVisibleHeight)
     {
         // check if the keyboard will hide the control in question
         // scroll up until the control is in place
         CGPoint newContentOffset = scrollView.contentOffset;
         newContentOffset.y += (controlVisualBottom - scrollViewVisibleHeight);
-        
+
         // make sure we don't set an impossible offset caused by the "nice visual offset"
         // if a control is at the bottom of the scroll view, it will end up just above the keyboard to eliminate scrolling inconsistencies
         newContentOffset.y = MIN(newContentOffset.y, scrollView.contentSize.height - scrollViewVisibleHeight);
-        
+
         [scrollView setContentOffset:newContentOffset animated:NO]; // animated:NO because we have created our own animation context around this code
     }
     else if (controlFrameInScrollView.origin.y < scrollView.contentOffset.y)
@@ -265,7 +268,7 @@ static NSUInteger const kActionSheetTagImagePicker = 1;
         // if the control is not fully visible, make it so (useful if the user taps on a partially visible input field
         CGPoint newContentOffset = scrollView.contentOffset;
         newContentOffset.y = controlFrameInScrollView.origin.y;
-        
+
         // animated:NO because we have created our own animation context around this code
         [scrollView setContentOffset:newContentOffset animated:NO];
     }
@@ -283,11 +286,11 @@ static NSUInteger const kActionSheetTagImagePicker = 1;
 {
     // No-op if the orientation is already correct
     if (image.imageOrientation == UIImageOrientationUp) return image;
-    
+
     // We need to calculate the proper transformation to make the image upright.
     // We do it in 2 steps: Rotate if Left/Right/Down, and then flip if Mirrored.
     CGAffineTransform transform = CGAffineTransformIdentity;
-    
+
     switch (image.imageOrientation)
     {
         case UIImageOrientationDown:
@@ -295,13 +298,13 @@ static NSUInteger const kActionSheetTagImagePicker = 1;
             transform = CGAffineTransformTranslate(transform, image.size.width, image.size.height);
             transform = CGAffineTransformRotate(transform, M_PI);
             break;
-            
+
         case UIImageOrientationLeft:
         case UIImageOrientationLeftMirrored:
             transform = CGAffineTransformTranslate(transform, image.size.width, 0.f);
             transform = CGAffineTransformRotate(transform, M_PI_2);
             break;
-            
+
         case UIImageOrientationRight:
         case UIImageOrientationRightMirrored:
             transform = CGAffineTransformTranslate(transform, 0.f, image.size.height);
@@ -311,7 +314,7 @@ static NSUInteger const kActionSheetTagImagePicker = 1;
         case UIImageOrientationUpMirrored:
             break;
     }
-    
+
     switch (image.imageOrientation)
     {
         case UIImageOrientationUpMirrored:
@@ -319,7 +322,7 @@ static NSUInteger const kActionSheetTagImagePicker = 1;
             transform = CGAffineTransformTranslate(transform, image.size.width, 0.f);
             transform = CGAffineTransformScale(transform, -1.f, 1.f);
             break;
-            
+
         case UIImageOrientationLeftMirrored:
         case UIImageOrientationRightMirrored:
             transform = CGAffineTransformTranslate(transform, image.size.height, 0.f);
@@ -331,7 +334,7 @@ static NSUInteger const kActionSheetTagImagePicker = 1;
         case UIImageOrientationRight:
             break;
     }
-    
+
     // Now we draw the underlying CGImage into a new context, applying the transform
     // calculated above.
     CGContextRef ctx = CGBitmapContextCreate(NULL,
@@ -350,12 +353,12 @@ static NSUInteger const kActionSheetTagImagePicker = 1;
             // Grr...
             CGContextDrawImage(ctx, CGRectMake(0.f, 0.f, image.size.height, image.size.width), image.CGImage);
             break;
-            
+
         default:
             CGContextDrawImage(ctx, CGRectMake(0.f, 0.f, image.size.width, image.size.height), image.CGImage);
             break;
     }
-    
+
     // And now we just create a new UIImage from the drawing context
     CGImageRef cgimg = CGBitmapContextCreateImage(ctx);
     UIImage *img = [UIImage imageWithCGImage:cgimg];
@@ -367,82 +370,82 @@ static NSUInteger const kActionSheetTagImagePicker = 1;
 + (UIImage *)image1x1WithColor:(UIColor *)color
 {
     CGRect rect = CGRectMake(0.f, 0.f, 1.f, 1.f);
-    
+
     UIGraphicsBeginImageContext(rect.size);
-    
+
     CGContextRef context = UIGraphicsGetCurrentContext();
-    
+
     CGContextSetFillColorWithColor(context, color.CGColor);
     CGContextFillRect(context, rect);
-    
+
     UIImage *image = UIGraphicsGetImageFromCurrentImageContext();
     UIGraphicsEndImageContext();
-    
+
     return image;
 }
 
 + (UIImage *)image:(UIImage *)image withAlpha:(CGFloat)alpha
 {
     CGRect rect = CGRectMake(0.f, 0.f, image.size.width, image.size.height);
-    
+
     UIGraphicsBeginImageContextWithOptions(image.size, NO, 0.f);
-    
+
     CGContextRef context = UIGraphicsGetCurrentContext();
-    
+
     CGContextScaleCTM(context, 1.f, -1.f);
     CGContextTranslateCTM(context, 0.f, -rect.size.height);
-    
+
     CGContextSetBlendMode(context, kCGBlendModeMultiply);
     CGContextSetAlpha(context, alpha);
-    
+
     CGContextDrawImage(context, rect, image.CGImage);
-    
+
     UIImage *imageNew = UIGraphicsGetImageFromCurrentImageContext();
-    
+
     UIGraphicsEndImageContext();
-    
+
     return imageNew;
 }
 
 + (UIImage *)image:(UIImage *)image withColor:(UIColor *)color
 {
     CGRect rect = CGRectMake(0.f, 0.f, image.size.width, image.size.height);
-    
+
     UIGraphicsBeginImageContextWithOptions(image.size, NO, 0.f);
-    
+
     CGContextRef context = UIGraphicsGetCurrentContext();
-    
+
     [image drawInRect:rect];
-    
+
     CGContextSetBlendMode(context, kCGBlendModeSourceIn);
     CGContextSetFillColorWithColor(context, color.CGColor);
     CGContextFillRect(context, rect);
-    
+
     UIImage *imageNew = UIGraphicsGetImageFromCurrentImageContext();
-    
+
     UIGraphicsEndImageContext();
-    
+
     return imageNew;
 }
 
 + (UIImage *)imageBlackAndWhite:(UIImage *)image
 {
     CGRect rect = CGRectMake(0.f, 0.f, image.size.width, image.size.height);
-    
+
     UIGraphicsBeginImageContextWithOptions(image.size, NO, 0.f);
-    
+
     CGContextRef context = UIGraphicsGetCurrentContext();
-    
+
     [image drawInRect:rect];
-    
+
     CGContextSetBlendMode(context, kCGBlendModeLuminosity);
     CGContextSetFillColorWithColor(context, [UIColor whiteColor].CGColor);
     CGContextFillRect(context, rect);
-    
+
     UIImage *imageNew = UIGraphicsGetImageFromCurrentImageContext();
-    
+
     UIGraphicsEndImageContext();
-    
+
     return imageNew;
 }
 
@@ -457,36 +460,36 @@ static NSUInteger const kActionSheetTagImagePicker = 1;
     {
         CGFloat koefWidth = (image.size.height > image.size.width ? image.size.width/image.size.height : 1.f);
         CGFloat koefHeight = (image.size.width > image.size.height ? image.size.height/image.size.width : 1.f);
-        
+
         size.width *= koefWidth;
         size.height *= koefHeight;
     }
-    
+
     CGRect rect = CGRectMake(0.f, 0.f, size.width, size.height);
-    
+
     UIGraphicsBeginImageContextWithOptions(size, NO, 0.f);
-    
+
     CGContextRef context = UIGraphicsGetCurrentContext();
-    
+
     if (backgroundColor && ![backgroundColor isEqual:[UIColor clearColor]])
     {
         CGContextSetFillColorWithColor(context, backgroundColor.CGColor);
         CGContextFillRect(context, rect);
     }
-    
+
     if (scalingMode == LGImageScalingModeAspectFill)
     {
         if (image.size.width / image.size.height >= 1 && image.size.width / image.size.height > size.width / size.height)
             size.width = size.height * (image.size.width / image.size.height);
         else if (image.size.height / image.size.width >= 1 && image.size.height / image.size.width > size.height / size.width)
             size.height = size.width * (image.size.height / image.size.width);
-        
+
         if (rect.size.width < size.width)
         {
             rect.origin.x = -(size.width - rect.size.width)/2;
             rect.size.width = size.width;
         }
-        
+
         if (rect.size.height < size.height)
         {
             rect.origin.y = -(size.height - rect.size.height)/2;
@@ -499,26 +502,26 @@ static NSUInteger const kActionSheetTagImagePicker = 1;
             size.width = size.height * (image.size.width / image.size.height);
         else if (image.size.height / image.size.width <= 1 && image.size.height / image.size.width < size.height / size.width)
             size.height = size.width * (image.size.height / image.size.width);
-        
+
         if (rect.size.width > size.width)
         {
             rect.origin.x = (rect.size.width - size.width)/2;
             rect.size.width = size.width;
         }
-        
+
         if (rect.size.height > size.height)
         {
             rect.origin.y = (rect.size.height - size.height)/2;
             rect.size.height = size.height;
         }
     }
-    
+
     [image drawInRect:rect];
-    
+
     UIImage *imageNew = UIGraphicsGetImageFromCurrentImageContext();
-    
+
     UIGraphicsEndImageContext();
-    
+
     return imageNew;
 }
 
@@ -526,15 +529,15 @@ static NSUInteger const kActionSheetTagImagePicker = 1;
 {
     CGSize size = CGSizeMake(image.size.width*multiplier, image.size.height*multiplier);
     CGRect rect = CGRectMake(0.f, 0.f, size.width, size.height);
-    
+
     UIGraphicsBeginImageContextWithOptions(size, NO, 0.f);
-    
+
     [image drawInRect:rect];
-    
+
     UIImage *imageNew = UIGraphicsGetImageFromCurrentImageContext();
-    
+
     UIGraphicsEndImageContext();
-    
+
     return imageNew;
 }
 
@@ -546,25 +549,25 @@ static NSUInteger const kActionSheetTagImagePicker = 1;
 + (UIImage *)image:(UIImage *)image roundWithRadius:(CGFloat)radius backgroundColor:(UIColor *)backgroundColor
 {
     CGRect rect = CGRectMake(0.f, 0.f, image.size.width, image.size.height);
-    
+
     UIGraphicsBeginImageContextWithOptions(image.size, NO, 0.f);
-    
+
     CGContextRef context = UIGraphicsGetCurrentContext();
-    
+
     if (backgroundColor && ![backgroundColor isEqual:[UIColor clearColor]])
     {
         CGContextSetFillColorWithColor(context, backgroundColor.CGColor);
         CGContextFillRect(context, rect);
     }
-    
+
     [[UIBezierPath bezierPathWithRoundedRect:rect cornerRadius:radius] addClip];
-    
+
     [image drawInRect:rect];
-    
+
     UIImage *imageNew = UIGraphicsGetImageFromCurrentImageContext();
-    
+
     UIGraphicsEndImageContext();
-    
+
     return imageNew;
 }
 
@@ -576,28 +579,28 @@ static NSUInteger const kActionSheetTagImagePicker = 1;
 + (UIImage *)image:(UIImage *)image cropCenterWithSize:(CGSize)size backgroundColor:(UIColor *)backgroundColor
 {
     CGRect rect = CGRectMake(0.f, 0.f, size.width, size.height);
-    
+
     UIGraphicsBeginImageContextWithOptions(size, NO, 0.f);
-    
+
     CGContextRef context = UIGraphicsGetCurrentContext();
-    
+
     if (backgroundColor && ![backgroundColor isEqual:[UIColor clearColor]])
     {
         CGContextSetFillColorWithColor(context, backgroundColor.CGColor);
         CGContextFillRect(context, rect);
     }
-    
+
     int heightDifference = size.height-image.size.height;
     int widthDifference = size.width-image.size.width;
-    
+
     CGRect bounds = CGRectMake(widthDifference/2, heightDifference/2, image.size.width, image.size.height);
-    
+
     [image drawInRect:bounds];
-    
+
     UIImage *imageNew = UIGraphicsGetImageFromCurrentImageContext();
-    
+
     UIGraphicsEndImageContext();
-    
+
     return imageNew;
 }
 
@@ -605,7 +608,7 @@ static NSUInteger const kActionSheetTagImagePicker = 1;
 {
     CGImageRef imageReference = image.CGImage;
     CGImageRef maskImageReference = maskImage.CGImage;
-    
+
     maskImageReference = CGImageMaskCreate(CGImageGetWidth(maskImageReference),
                                            CGImageGetHeight(maskImageReference),
                                            CGImageGetBitsPerComponent(maskImageReference),
@@ -614,13 +617,13 @@ static NSUInteger const kActionSheetTagImagePicker = 1;
                                            CGImageGetDataProvider(maskImageReference),
                                            NULL,
                                            YES);
-    
+
     CGImageRef maskedImageReference = CGImageCreateWithMask(imageReference, maskImageReference);
     CGImageRelease(maskImageReference);
-    
+
     UIImage *maskedImage = [UIImage imageWithCGImage:maskedImageReference];
     CGImageRelease(maskedImageReference);
-    
+
     return maskedImage;
 }
 
@@ -632,15 +635,15 @@ static NSUInteger const kActionSheetTagImagePicker = 1;
 + (UIImage *)imageFromView:(UIView *)view inPixels:(BOOL)inPixels
 {
     UIGraphicsBeginImageContextWithOptions(view.frame.size, NO, (inPixels ? 1.f : 0.f));
-    
+
     CGContextRef context = UIGraphicsGetCurrentContext();
-    
+
     [view.layer renderInContext:context];
-    
+
     UIImage *capturedImage = UIGraphicsGetImageFromCurrentImageContext();
-    
+
     UIGraphicsEndImageContext();
-    
+
     return capturedImage;
 }
 
@@ -649,7 +652,7 @@ static NSUInteger const kActionSheetTagImagePicker = 1;
     // Cancel if point is outside image coordinates
     if (!CGRectContainsPoint(CGRectMake(0.0f, 0.0f, image.size.width, image.size.height), point))
         return nil;
-    
+
     // Create a 1x1 pixel byte array and bitmap context to draw the pixel into.
     // Reference: http://stackoverflow.com/questions/1042830/retrieving-a-pixel-alpha-value-for-a-uiimage
     NSInteger pointX = trunc(point.x);
@@ -671,18 +674,18 @@ static NSUInteger const kActionSheetTagImagePicker = 1;
                                                  kCGImageAlphaPremultipliedLast | kCGBitmapByteOrder32Big);
     CGColorSpaceRelease(colorSpace);
     CGContextSetBlendMode(context, kCGBlendModeCopy);
-    
+
     // Draw the pixel we are interested in onto the bitmap context
     CGContextTranslateCTM(context, -pointX, pointY-(CGFloat)height);
     CGContextDrawImage(context, CGRectMake(0.0f, 0.0f, (CGFloat)width, (CGFloat)height), cgImage);
     CGContextRelease(context);
-    
+
     // Convert color values [0..255] to floats [0.0..1.0]
     CGFloat red   = (CGFloat)pixelData[0] / 255.0f;
     CGFloat green = (CGFloat)pixelData[1] / 255.0f;
     CGFloat blue  = (CGFloat)pixelData[2] / 255.0f;
     CGFloat alpha = (CGFloat)pixelData[3] / 255.0f;
-    
+
     return [UIColor colorWithRed:red green:green blue:blue alpha:alpha];
 }
 
@@ -690,43 +693,43 @@ static NSUInteger const kActionSheetTagImagePicker = 1;
 {
     UIColor *pixelColor = [LGHelper image:maskImage colorAtPixel:point];
     CGFloat alpha = 0.0;
-    
+
     [pixelColor getRed:NULL green:NULL blue:NULL alpha:&alpha];
-    
+
     return alpha > 0.f;
 }
 
 + (BOOL)maskAlphaImage:(UIImage *)maskImage pointIsCorrect:(CGPoint)point containerSize:(CGSize)containerSize
 {
     CGSize imageSize = maskImage.size;
-    
+
     point.x *= (containerSize.width != 0) ? (imageSize.width / containerSize.width) : 1;
     point.y *= (containerSize.height != 0) ? (imageSize.height / containerSize.height) : 1;
-    
+
     UIColor *pixelColor = [LGHelper image:maskImage colorAtPixel:point];
     CGFloat alpha = 0.0;
-    
+
     [pixelColor getRed:NULL green:NULL blue:NULL alpha:&alpha];
-    
+
     return alpha > 0.f;
 }
 
 + (BOOL)maskBlackAndWhiteImage:(UIImage *)maskImage pointIsCorrect:(CGPoint)point
 {
     UIColor *pixelColor = [LGHelper image:maskImage colorAtPixel:point];
-    
+
     return ![pixelColor isEqual:[UIColor blackColor]];
 }
 
 + (BOOL)maskBlackAndWhiteImage:(UIImage *)maskImage pointIsCorrect:(CGPoint)point containerSize:(CGSize)containerSize
 {
     CGSize imageSize = maskImage.size;
-    
+
     point.x *= (containerSize.width != 0) ? (imageSize.width / containerSize.width) : 1;
     point.y *= (containerSize.height != 0) ? (imageSize.height / containerSize.height) : 1;
-    
+
     UIColor *pixelColor = [LGHelper image:maskImage colorAtPixel:point];
-    
+
     return ![pixelColor isEqual:[UIColor blackColor]];
 }
 
@@ -749,32 +752,32 @@ static NSUInteger const kActionSheetTagImagePicker = 1;
 + (UIImage *)screenshotMakeInPixels:(BOOL)inPixels
 {
     UIWindow *window = [[UIApplication sharedApplication].delegate window];
-    
+
     UIGraphicsBeginImageContextWithOptions(window.frame.size, NO, (inPixels ? 1.f : 0.f));
-    
+
     CGContextRef context = UIGraphicsGetCurrentContext();
-    
+
     [window.layer renderInContext:context];
-    
+
     UIImage *capturedImage = UIGraphicsGetImageFromCurrentImageContext();
-    
+
     UIGraphicsEndImageContext();
-    
+
     return capturedImage;
 }
 
 + (UIImage *)screenshotMakeOfView:(UIView *)view inPixels:(BOOL)inPixels
 {
     UIGraphicsBeginImageContextWithOptions(view.frame.size, NO, (inPixels ? 1.f : 0.f));
-    
+
     CGContextRef context = UIGraphicsGetCurrentContext();
-    
+
     [view.layer renderInContext:context];
-    
+
     UIImage *capturedImage = UIGraphicsGetImageFromCurrentImageContext();
-    
+
     UIGraphicsEndImageContext();
-    
+
     return capturedImage;
 }
 
@@ -785,7 +788,7 @@ static NSUInteger const kActionSheetTagImagePicker = 1;
     Reachability *reachability = [Reachability reachabilityForInternetConnection];
     [reachability startNotifier];
     [[NSNotificationCenter defaultCenter] addObserver:target selector:selector name:kReachabilityChangedNotification object:reachability];
-    
+
     return reachability;
 }
 
@@ -794,7 +797,7 @@ static NSUInteger const kActionSheetTagImagePicker = 1;
     Reachability *reachability = [Reachability reachabilityWithHostName:hostName];
     [reachability startNotifier];
     [[NSNotificationCenter defaultCenter] addObserver:target selector:selector name:kReachabilityChangedNotification object:reachability];
-    
+
     return reachability;
 }
 
@@ -819,35 +822,92 @@ static NSUInteger const kActionSheetTagImagePicker = 1;
 + (void)keyboardNotificationsAddToTarget:(id)target selector:(SEL)selector
 {
     [[NSNotificationCenter defaultCenter] addObserver:target selector:selector name:UIKeyboardWillShowNotification object:nil];
+//    [[NSNotificationCenter defaultCenter] addObserver:target selector:selector name:UIKeyboardWillChangeFrameNotification object:nil];
     [[NSNotificationCenter defaultCenter] addObserver:target selector:selector name:UIKeyboardWillHideNotification object:nil];
 }
 
 + (void)keyboardNotificationsRemoveFromTarget:(id)target selector:(SEL)selector
 {
     [[NSNotificationCenter defaultCenter] removeObserver:target name:UIKeyboardWillShowNotification object:nil];
+//    [[NSNotificationCenter defaultCenter] removeObserver:target name:UIKeyboardWillChangeFrameNotification object:nil];
     [[NSNotificationCenter defaultCenter] removeObserver:target name:UIKeyboardWillHideNotification object:nil];
 }
 
-+ (void)keyboardAnimateWithNotificationUserInfo:(NSDictionary *)notificationUserInfo animations:(void(^)(CGFloat keyboardHeight))animations
++ (void)keyboardNotificationsAddToScrollView:(UIScrollView *)scrollView
 {
-    CGFloat keyboardHeight = (notificationUserInfo[@"UIKeyboardBoundsUserInfoKey"] ? [notificationUserInfo[@"UIKeyboardBoundsUserInfoKey"] CGRectValue].size.height : 0.f);
-    if (!keyboardHeight)
-        keyboardHeight = (notificationUserInfo[UIKeyboardFrameBeginUserInfoKey] ? [notificationUserInfo[UIKeyboardFrameBeginUserInfoKey] CGRectValue].size.height : 0.f);
-    if (!keyboardHeight)
-        keyboardHeight = (notificationUserInfo[UIKeyboardFrameEndUserInfoKey] ? [notificationUserInfo[UIKeyboardFrameEndUserInfoKey] CGRectValue].size.height : 0.f);
-    if (!keyboardHeight)
-        return;
-    
+    if (!scrollView) return;
+
+    if (!LGHelperShared.keyboardNotificationsScrollViews)
+        LGHelperShared.keyboardNotificationsScrollViews = [NSMutableArray new];
+
+    if (![LGHelperShared.keyboardNotificationsScrollViews containsObject:scrollView])
+    {
+        [LGHelperShared.keyboardNotificationsScrollViews addObject:scrollView];
+
+        if (!LGHelperShared.isKeyboardNotificationsExists)
+        {
+            LGHelperShared.keyboardNotificationsExists = YES;
+            [LGHelper keyboardNotificationsAddToTarget:LGHelperShared selector:@selector(keyboardNotification:)];
+        }
+    }
+}
+
++ (void)keyboardNotificationsRemoveFromScrollView:(UIScrollView *)scrollView
+{
+    if (!scrollView) return;
+
+    if ([LGHelperShared.keyboardNotificationsScrollViews containsObject:scrollView])
+    {
+        [LGHelperShared.keyboardNotificationsScrollViews removeObject:scrollView];
+
+        if (!LGHelperShared.keyboardNotificationsScrollViews.count)
+        {
+            LGHelperShared.keyboardNotificationsScrollViews = nil;
+
+            if (LGHelperShared.isKeyboardNotificationsExists)
+            {
+                [LGHelper keyboardNotificationsRemoveFromTarget:LGHelperShared selector:@selector(keyboardNotification:)];
+                LGHelperShared.keyboardNotificationsExists = NO;
+            }
+        }
+    }
+}
+
++ (void)keyboardAnimateWithNotificationUserInfo:(NSDictionary *)notificationUserInfo
+                                     animations:(void(^)(CGFloat keyboardHeight))animations
+{
+    CGFloat keyboardHeight = (notificationUserInfo[UIKeyboardFrameEndUserInfoKey] ? [notificationUserInfo[UIKeyboardFrameEndUserInfoKey] CGRectValue].size.height : 0.f);
+
+    if (!keyboardHeight) return;
+
     NSTimeInterval animationDuration = [notificationUserInfo[UIKeyboardAnimationDurationUserInfoKey] doubleValue];
     int animationCurve = [notificationUserInfo[UIKeyboardAnimationCurveUserInfoKey] intValue];
-    
+
     [UIView beginAnimations:nil context:NULL];
     [UIView setAnimationDuration:animationDuration];
     [UIView setAnimationCurve:animationCurve];
-    
+
     if (animations) animations(keyboardHeight);
-    
+
     [UIView commitAnimations];
+}
+
+- (void)keyboardNotification:(NSNotification *)notification
+{
+    [LGHelper keyboardAnimateWithNotificationUserInfo:notification.userInfo
+                                   animations:^(CGFloat keyboardHeight)
+     {
+         for (UIScrollView *scrollView in LGHelperShared.keyboardNotificationsScrollViews)
+         {
+             UIEdgeInsets contentInset = scrollView.contentInset;
+             contentInset.bottom = ([notification.name isEqualToString:UIKeyboardWillShowNotification] ? keyboardHeight : 0.f);
+             if (scrollView.contentInset.bottom != contentInset.bottom)
+             {
+                 scrollView.contentInset = contentInset;
+                 scrollView.scrollIndicatorInsets = contentInset;
+             }
+         }
+     }];
 }
 
 #pragma mark - Disk capacity
@@ -859,22 +919,22 @@ static NSUInteger const kActionSheetTagImagePicker = 1;
     NSError *error = nil;
     NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);
     NSDictionary *dictionary = [[NSFileManager defaultManager] attributesOfFileSystemForPath:[paths lastObject] error: &error];
-    
+
     if (dictionary)
     {
         NSNumber *fileSystemSizeInBytes = [dictionary objectForKey:NSFileSystemSize];
         NSNumber *freeFileSystemSizeInBytes = [dictionary objectForKey:NSFileSystemFreeSize];
-        
+
         totalSpace = [fileSystemSizeInBytes floatValue];
         totalFreeSpace = [freeFileSystemSizeInBytes floatValue];
-        
+
         NSLog(@"Memory Capacity of %llu MiB with %llu MiB Free memory available.", ((totalSpace/1024ll)/1024ll), ((totalFreeSpace/1024ll)/1024ll));
     }
     else
     {
         NSLog(@"Error Obtaining System Memory Info: Domain = %@, Code = %ld", [error domain], (long)[error code]);
     }
-    
+
     return totalFreeSpace;
 }
 
@@ -883,31 +943,31 @@ static NSUInteger const kActionSheetTagImagePicker = 1;
 + (NSString *)mimeTypeForPath:(NSString *)path
 {
     NSString *mimeTypeString;
-    
+
     if (path.length && path.pathExtension.length)
         mimeTypeString = [LGHelper mimeTypeForExtension:path.pathExtension];
-    
+
     return mimeTypeString;
 }
 
 + (NSString *)mimeTypeForExtension:(NSString *)extension
 {
     NSString *mimeTypeString;
-    
+
     if (extension.length)
     {
         CFStringRef extension_ = (__bridge CFStringRef)extension;
         CFStringRef UTI = UTTypeCreatePreferredIdentifierForTag(kUTTagClassFilenameExtension, extension_, NULL);
         assert(UTI != NULL);
-        
+
         NSString *mimetype = CFBridgingRelease(UTTypeCopyPreferredTagWithClass(UTI, kUTTagClassMIMEType));
         assert(mimetype != NULL);
-        
+
         CFRelease(UTI);
-        
+
         mimeTypeString = mimetype;
     }
-    
+
     return mimeTypeString;
 }
 
@@ -919,15 +979,15 @@ static NSUInteger const kActionSheetTagImagePicker = 1;
     struct ifaddrs *interfaces = NULL;
     struct ifaddrs *temp_addr = NULL;
     int success = 0;
-    
+
     // retrieve the current interfaces - returns 0 on success
     success = getifaddrs(&interfaces);
-    
+
     if (success == 0)
     {
         // Loop through linked list of interfaces
         temp_addr = interfaces;
-        
+
         while(temp_addr != NULL)
         {
             if(temp_addr->ifa_addr->sa_family == AF_INET)
@@ -935,14 +995,14 @@ static NSUInteger const kActionSheetTagImagePicker = 1;
                 // Get NSString from C String
                 address = [NSString stringWithUTF8String:inet_ntoa(((struct sockaddr_in *)temp_addr->ifa_addr)->sin_addr)];
             }
-            
+
             temp_addr = temp_addr->ifa_next;
         }
     }
-    
+
     // Free memory
     freeifaddrs(interfaces);
-    
+
     return address;
 }
 
@@ -951,29 +1011,29 @@ static NSUInteger const kActionSheetTagImagePicker = 1;
     NSUInteger an_Integer;
     NSArray *ipItemsArray;
     NSString *externalIP;
-    
+
     NSURL *ipUrl = [NSURL URLWithString:@"http://www.dyndns.org/cgi-bin/check_ip.cgi"];
-    
+
     if (ipUrl)
     {
         NSError *error = nil;
         NSString *theIpHtml = [NSString stringWithContentsOfURL:ipUrl encoding:NSUTF8StringEncoding error:&error];
-        
+
         if (!error)
         {
             NSScanner *theScanner;
             NSString *text = nil;
-            
+
             theScanner = [NSScanner scannerWithString:theIpHtml];
-            
+
             while ([theScanner isAtEnd] == NO)
             {
                 // find start of tag
                 [theScanner scanUpToString:@"<" intoString:NULL] ;
-                
+
                 // find end of tag
                 [theScanner scanUpToString:@">" intoString:&text] ;
-                
+
                 // replace the found tag with a space
                 //(you can filter multi-spaces out later if you wish)
                 theIpHtml = [theIpHtml stringByReplacingOccurrencesOfString:[NSString stringWithFormat:@"%@>", text]
@@ -985,7 +1045,7 @@ static NSUInteger const kActionSheetTagImagePicker = 1;
         }
         else NSLog(@"%s Error: %@", __PRETTY_FUNCTION__, error);
     }
-    
+
     return externalIP;
 }
 
@@ -994,9 +1054,9 @@ static NSUInteger const kActionSheetTagImagePicker = 1;
 + (NSString *)md5HashFromData:(NSData *)data
 {
     unsigned char result[CC_MD5_DIGEST_LENGTH];
-    
+
     CC_MD5(data.bytes, (CC_LONG)data.length, result);
-    
+
     return [NSString stringWithFormat:
             @"%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x",
             result[0], result[1], result[2], result[3], result[4], result[5], result[6], result[7],
@@ -1008,9 +1068,9 @@ static NSUInteger const kActionSheetTagImagePicker = 1;
 {
     const char *cStr = [string UTF8String];
     unsigned char result[CC_MD5_DIGEST_LENGTH];
-    
+
     CC_MD5(cStr, (CC_LONG)strlen(cStr), result);
-    
+
     return [NSString stringWithFormat:
             @"%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x",
             result[0], result[1], result[2], result[3], result[4], result[5], result[6], result[7],
@@ -1023,9 +1083,9 @@ static NSUInteger const kActionSheetTagImagePicker = 1;
 + (NSString *)sha1HashFromData:(NSData *)data
 {
     unsigned char result[CC_SHA1_DIGEST_LENGTH];
-    
+
     CC_SHA1(data.bytes, (CC_LONG)data.length, result);
-    
+
     return [NSString stringWithFormat:
             @"%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x",
             result[0], result[1], result[2], result[3], result[4], result[5], result[6], result[7],
@@ -1037,9 +1097,9 @@ static NSUInteger const kActionSheetTagImagePicker = 1;
 {
     const char *cStr = [string UTF8String];
     unsigned char result[CC_SHA1_DIGEST_LENGTH];
-    
+
     CC_SHA1(cStr, (CC_LONG)strlen(cStr), result);
-    
+
     return [NSString stringWithFormat:
             @"%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x",
             result[0], result[1], result[2], result[3], result[4], result[5], result[6], result[7],
@@ -1057,14 +1117,14 @@ static NSUInteger const kActionSheetTagImagePicker = 1;
 + (void)phoneCallToNumber:(NSString *)number
 {
     NSString *newString = [LGHelper stringByRemovingAllExeptPhoneSymbols:number];
-    
+
     [[UIApplication sharedApplication] openURL:[NSURL URLWithString:[NSString stringWithFormat:@"tel:%@", newString]]];
 }
 
 + (void)phoneCallWithConfirmationToNumber:(NSString *)number
 {
     NSString *newString = [LGHelper stringByRemovingAllExeptPhoneSymbols:number];
-    
+
     [[UIApplication sharedApplication] openURL:[NSURL URLWithString:[NSString stringWithFormat:@"telprompt:%@", newString]]];
 }
 
@@ -1078,25 +1138,25 @@ static NSUInteger const kActionSheetTagImagePicker = 1;
 + (void)addressOpenOnMap:(NSString *)address
 {
     Class mapItemClass = [MKMapItem class];
-    
+
     if (mapItemClass && [mapItemClass respondsToSelector:@selector(openMapsWithItems:launchOptions:)])
     {
         CLGeocoder *geocoder = [CLGeocoder new];
-        
+
         [geocoder geocodeAddressString:address
                      completionHandler:^(NSArray *placemarks, NSError *error)
          {
              // Convert the CLPlacemark to an MKPlacemark
              // Note: There's no error checking for a failed geocode
              CLPlacemark *geocodedPlacemark = [placemarks objectAtIndex:0];
-             
+
              MKPlacemark *placemark = [[MKPlacemark alloc] initWithCoordinate:geocodedPlacemark.location.coordinate
                                                             addressDictionary:geocodedPlacemark.addressDictionary];
-             
+
              // Create a map item for the geocoded address to pass to Maps app
              MKMapItem *mapItem = [[MKMapItem alloc] initWithPlacemark:placemark];
              [mapItem setName:geocodedPlacemark.name];
-             
+
              [mapItem openInMapsWithLaunchOptions:nil];
          }];
     }
@@ -1105,33 +1165,33 @@ static NSUInteger const kActionSheetTagImagePicker = 1;
 + (void)addressOpenOnMapWithTrack:(NSString *)address
 {
     Class mapItemClass = [MKMapItem class];
-    
+
     if (mapItemClass && [mapItemClass respondsToSelector:@selector(openMapsWithItems:launchOptions:)])
     {
         CLGeocoder *geocoder = [CLGeocoder new];
-        
+
         [geocoder geocodeAddressString:address
                      completionHandler:^(NSArray *placemarks, NSError *error)
          {
              // Convert the CLPlacemark to an MKPlacemark
              // Note: There's no error checking for a failed geocode
              CLPlacemark *geocodedPlacemark = [placemarks objectAtIndex:0];
-             
+
              MKPlacemark *placemark = [[MKPlacemark alloc] initWithCoordinate:geocodedPlacemark.location.coordinate
                                                             addressDictionary:geocodedPlacemark.addressDictionary];
-             
+
              // Create a map item for the geocoded address to pass to Maps app
              MKMapItem *mapItem = [[MKMapItem alloc] initWithPlacemark:placemark];
-             
+
              [mapItem setName:geocodedPlacemark.name];
-             
+
              // Set the directions mode to "Driving"
              // Can use MKLaunchOptionsDirectionsModeWalking instead
              NSDictionary *launchOptions = @{MKLaunchOptionsDirectionsModeKey : MKLaunchOptionsDirectionsModeDriving};
-             
+
              // Get the "Current User Location" MKMapItem
              MKMapItem *currentLocationMapItem = [MKMapItem mapItemForCurrentLocation];
-             
+
              // Pass the current location and destination map items to the Maps app
              // Set the direction mode in the launchOptions dictionary
              [MKMapItem openMapsWithItems:@[currentLocationMapItem, mapItem] launchOptions:launchOptions];
@@ -1142,17 +1202,17 @@ static NSUInteger const kActionSheetTagImagePicker = 1;
 + (void)coordinateOpenOnMap:(CLLocationCoordinate2D)coordinate
 {
     Class mapItemClass = [MKMapItem class];
-    
+
     if (mapItemClass && [mapItemClass respondsToSelector:@selector(openMapsWithItems:launchOptions:)])
     {
         // Create an MKMapItem to pass to the Maps app
         MKPlacemark *placemark = [[MKPlacemark alloc] initWithCoordinate:coordinate
                                                        addressDictionary:nil];
-        
+
         MKMapItem *mapItem = [[MKMapItem alloc] initWithPlacemark:placemark];
-        
+
         [mapItem setName:@"My Place"];
-        
+
         [mapItem openInMapsWithLaunchOptions:nil];
     }
 }
@@ -1160,24 +1220,24 @@ static NSUInteger const kActionSheetTagImagePicker = 1;
 + (void)coordinateOpenOnMapTrack:(CLLocationCoordinate2D)coordinate
 {
     Class mapItemClass = [MKMapItem class];
-    
+
     if (mapItemClass && [mapItemClass respondsToSelector:@selector(openMapsWithItems:launchOptions:)])
     {
         // Create an MKMapItem to pass to the Maps app
         MKPlacemark *placemark = [[MKPlacemark alloc] initWithCoordinate:coordinate
                                                        addressDictionary:nil];
-        
+
         MKMapItem *mapItem = [[MKMapItem alloc] initWithPlacemark:placemark];
-        
+
         [mapItem setName:@"My Place"];
-        
+
         // Set the directions mode to "Walking"
         // Can use MKLaunchOptionsDirectionsModeDriving instead
         NSDictionary *launchOptions = @{MKLaunchOptionsDirectionsModeKey : MKLaunchOptionsDirectionsModeWalking};
-        
+
         // Get the "Current User Location" MKMapItem
         MKMapItem *currentLocationMapItem = [MKMapItem mapItemForCurrentLocation];
-        
+
         // Pass the current location and destination map items to the Maps app
         // Set the direction mode in the launchOptions dictionary
         [MKMapItem openMapsWithItems:@[currentLocationMapItem, mapItem]
@@ -1193,7 +1253,7 @@ static NSUInteger const kActionSheetTagImagePicker = 1;
                 completionHandler:(void(^)(BOOL accessGranted, NSString *identifier))completionHandler
 {
     EKEventStore *store = [EKEventStore new];
-    
+
     [store requestAccessToEntityType:EKEntityTypeEvent
                           completion:^(BOOL granted, NSError *error)
      {
@@ -1205,27 +1265,27 @@ static NSUInteger const kActionSheetTagImagePicker = 1;
                                       });
              return;
          }
-         
+
          // -----
-         
+
          NSDate *endDate = [startDate dateByAddingTimeInterval:duration];
-         
+
          EKCalendar *calendar = [store defaultCalendarForNewEvents];
-         
+
          NSPredicate *predicate = [store predicateForEventsWithStartDate:startDate endDate:endDate calendars:@[calendar]];
-         
+
          NSArray *matchesEvents = [store eventsMatchingPredicate:predicate];
-         
+
          EKEvent *mathesEvent = nil;
-         
+
          for (EKEvent *event in matchesEvents)
          {
              if ([event.title isEqualToString:title])
                  mathesEvent = event;
          }
-         
+
          // -----
-         
+
          if (!mathesEvent)
          {
              EKEvent *event = [EKEvent eventWithEventStore:store];
@@ -1235,7 +1295,7 @@ static NSUInteger const kActionSheetTagImagePicker = 1;
              event.calendar = calendar;
              NSError *err = nil;
              [store saveEvent:event span:EKSpanThisEvent commit:YES error:&err];
-             
+
              dispatch_async_main_safe(^(void)
                                       {
                                           if (completionHandler) completionHandler(granted, event.eventIdentifier);
@@ -1255,7 +1315,7 @@ static NSUInteger const kActionSheetTagImagePicker = 1;
                 completionHandler:(void(^)(BOOL accessGranted))completionHandler
 {
     EKEventStore *store = [EKEventStore new];
-    
+
     [store requestAccessToEntityType:EKEntityTypeEvent
                           completion:^(BOOL granted, NSError *error)
      {
@@ -1267,15 +1327,15 @@ static NSUInteger const kActionSheetTagImagePicker = 1;
                                       });
              return;
          }
-         
+
          EKEvent *eventToRemove = [store eventWithIdentifier:identifier];
-         
+
          if (eventToRemove)
          {
              NSError* err = nil;
              [store removeEvent:eventToRemove span:EKSpanThisEvent commit:YES error:&err];
          }
-         
+
          dispatch_async_main_safe(^(void)
                                   {
                                       if (completionHandler) completionHandler(granted);
@@ -1289,7 +1349,7 @@ static NSUInteger const kActionSheetTagImagePicker = 1;
                    completionHandler:(void(^)(BOOL accessGranted))completionHandler
 {
     EKEventStore *store = [EKEventStore new];
-    
+
     [store requestAccessToEntityType:EKEntityTypeEvent
                           completion:^(BOOL granted, NSError *error)
      {
@@ -1301,33 +1361,33 @@ static NSUInteger const kActionSheetTagImagePicker = 1;
                                       });
              return;
          }
-         
+
          // -----
-         
+
          NSDate *endDate = [startDate dateByAddingTimeInterval:duration];
-         
+
          EKCalendar *calendar = [store defaultCalendarForNewEvents];
-         
+
          NSPredicate *predicate = [store predicateForEventsWithStartDate:startDate endDate:endDate calendars:@[calendar]];
-         
+
          NSArray *matchesEvents = [store eventsMatchingPredicate:predicate];
-         
+
          EKEvent *mathesEvent = nil;
-         
+
          for (EKEvent *event in matchesEvents)
          {
              if ([event.title isEqualToString:title])
                  mathesEvent = event;
          }
-         
+
          // -----
-         
+
          if (mathesEvent)
          {
              NSError* err = nil;
              [store removeEvent:mathesEvent span:EKSpanThisEvent commit:YES error:&err];
          }
-         
+
          dispatch_async_main_safe(^(void)
                                   {
                                       if (completionHandler) completionHandler(granted);
@@ -1359,7 +1419,7 @@ static NSUInteger const kActionSheetTagImagePicker = 1;
                      completionHandler:(void(^)(BOOL accessGranted, NSString *identifier))completionHandler
 {
     ABAddressBookRef addressBook = ABAddressBookCreateWithOptions(NULL, NULL); // create address book record
-    
+
     ABAddressBookRequestAccessWithCompletion(addressBook, ^(bool granted, CFErrorRef error)
                                              {
                                                  if (!granted || error)
@@ -1370,18 +1430,18 @@ static NSUInteger const kActionSheetTagImagePicker = 1;
                                                                               });
                                                      return;
                                                  }
-                                                 
+
                                                  // -----
-                                                 
+
                                                  ABRecordRef person = ABPersonCreate(); // create a person
-                                                 
+
                                                  // -----
-                                                 
+
                                                  NSData *dataRef = UIImagePNGRepresentation(image);
                                                  ABPersonSetImageData(person, (__bridge CFDataRef)dataRef, &error);
-                                                 
+
                                                  // -----
-                                                 
+
                                                  if (firstName.length)       ABRecordSetValue(person, kABPersonFirstNameProperty, (__bridge CFStringRef)firstName, &error);
                                                  if (lastName.length)        ABRecordSetValue(person, kABPersonLastNameProperty, (__bridge CFStringRef)lastName, &error);
                                                  if (middleName.length)      ABRecordSetValue(person, kABPersonMiddleNameProperty, (__bridge CFStringRef)middleName, &error);
@@ -1391,71 +1451,71 @@ static NSUInteger const kActionSheetTagImagePicker = 1;
                                                  if (department.length)      ABRecordSetValue(person, kABPersonDepartmentProperty, (__bridge CFStringRef)department, &error);
                                                  if (birthday)               ABRecordSetValue(person, kABPersonBirthdayProperty, (__bridge CFDateRef)birthday, &error);
                                                  if (note.length)            ABRecordSetValue(person, kABPersonNoteProperty, (__bridge CFStringRef)note, &error);
-                                                 
+
                                                  // -----
-                                                 
+
                                                  if (phonesMobile.count || phonesHome.count)
                                                  {
                                                      ABMutableMultiValueRef phoneMultiValue = ABMultiValueCreateMutable(kABPersonPhoneProperty);
-                                                     
+
                                                      if (phonesMobile.count)
                                                          for (NSString *phone in phonesMobile)
                                                              ABMultiValueAddValueAndLabel(phoneMultiValue, (__bridge CFStringRef)phone, kABPersonPhoneMobileLabel, NULL);
-                                                     
+
                                                      if (phonesHome.count)
                                                          for (NSString *phone in phonesHome)
                                                              ABMultiValueAddValueAndLabel(phoneMultiValue, (__bridge CFStringRef)phone, kABPersonPhoneMainLabel, NULL);
-                                                     
+
                                                      ABRecordSetValue(person, kABPersonPhoneProperty, phoneMultiValue, nil);
                                                      CFRelease(phoneMultiValue);
                                                  }
-                                                 
+
                                                  // -----
-                                                 
+
                                                  if (country.length || region.length || city.length || street.length || zip.length)
                                                  {
                                                      ABMutableMultiValueRef addressMultiValue = ABMultiValueCreateMutable(kABMultiDictionaryPropertyType);
-                                                     
+
                                                      if (country.length) ABMultiValueAddValueAndLabel(addressMultiValue, (__bridge CFStringRef)country, kABPersonAddressCountryKey, NULL);
                                                      if (region.length)  ABMultiValueAddValueAndLabel(addressMultiValue, (__bridge CFStringRef)region, kABPersonAddressStateKey, NULL);
                                                      if (city.length)    ABMultiValueAddValueAndLabel(addressMultiValue, (__bridge CFStringRef)city, kABPersonAddressCityKey, NULL);
                                                      if (street.length)  ABMultiValueAddValueAndLabel(addressMultiValue, (__bridge CFStringRef)street, kABPersonAddressStreetKey, NULL);
                                                      if (zip.length)     ABMultiValueAddValueAndLabel(addressMultiValue, (__bridge CFStringRef)zip, kABPersonAddressZIPKey, NULL);
-                                                     
+
                                                      ABRecordSetValue(person, kABPersonAddressProperty, addressMultiValue, &error);
                                                      CFRelease(addressMultiValue);
                                                  }
-                                                 
+
                                                  // -----
-                                                 
+
                                                  if (email.length)
                                                  {
                                                      ABMutableMultiValueRef emailMultiValue = ABMultiValueCreateMutable(kABMultiStringPropertyType);
-                                                     
+
                                                      ABMultiValueAddValueAndLabel(emailMultiValue, (__bridge CFStringRef)email, kABHomeLabel, NULL);
-                                                     
+
                                                      ABRecordSetValue(person, kABPersonEmailProperty, emailMultiValue, &error);
                                                  }
-                                                 
+
                                                  // -----
-                                                 
+
                                                  if (site.length)
                                                  {
                                                      ABMutableMultiValueRef siteMultiValue = ABMultiValueCreateMutable(kABMultiStringPropertyType);
-                                                     
+
                                                      ABMultiValueAddValueAndLabel(siteMultiValue, (__bridge CFStringRef)site, kABHomeLabel, NULL);
-                                                     
+
                                                      ABRecordSetValue(person, kABPersonURLProperty, siteMultiValue, &error);
                                                  }
-                                                 
+
                                                  // -----
-                                                 
+
                                                  ABAddressBookAddRecord(addressBook, person, &error); //add the new person to the record
-                                                 
+
                                                  ABAddressBookSave(addressBook, &error); //save the record
-                                                 
+
                                                  ABRecordID identifier = ABRecordGetRecordID(person);
-                                                 
+
                                                  dispatch_async_main_safe(^(void)
                                                                           {
                                                                               if (completionHandler) completionHandler(granted, [NSString stringWithFormat:@"%i", (int)identifier]);
@@ -1468,7 +1528,7 @@ static NSUInteger const kActionSheetTagImagePicker = 1;
 + (void)cookiesClear
 {
     NSHTTPCookieStorage *storage = [NSHTTPCookieStorage sharedHTTPCookieStorage];
-    
+
     for (NSHTTPCookie *cookie in [storage cookies])
         [storage deleteCookie:cookie];
 }
@@ -1516,22 +1576,22 @@ static NSUInteger const kActionSheetTagImagePicker = 1;
 + (NSString *)stringByDecodingHTMLEntitiesInString:(NSString *)input
 {
     NSMutableString *results = [NSMutableString string];
-    
+
     NSScanner *scanner = [NSScanner scannerWithString:input];
     [scanner setCharactersToBeSkipped:nil];
-    
+
     while (![scanner isAtEnd])
     {
         NSString *temp;
-        
+
         if ([scanner scanUpToString:@"&" intoString:&temp]) [results appendString:temp];
-        
+
         if ([scanner scanString:@"&" intoString:NULL])
         {
             BOOL valid = YES;
             unsigned c = 0;
             NSUInteger savedLocation = [scanner scanLocation];
-            
+
             if ([scanner scanString:@"#" intoString:NULL])
             {
                 // it's a numeric entity
@@ -1539,21 +1599,21 @@ static NSUInteger const kActionSheetTagImagePicker = 1;
                 {
                     // hexadecimal
                     unsigned int value;
-                    
+
                     if ([scanner scanHexInt:&value]) c = value;
-                    
+
                     else valid = NO;
                 }
                 else
                 {
                     // decimal
                     int value;
-                    
+
                     if ([scanner scanInt:&value] && value >= 0) c = value;
-                    
+
                     else valid = NO;
                 }
-                
+
                 if (![scanner scanString:@";" intoString:NULL])
                 {
                     // not ;-terminated, bail out and emit the whole entity
@@ -1646,7 +1706,7 @@ static NSUInteger const kActionSheetTagImagePicker = 1;
     int red = (hex >> 16) & 0xFF;
     int green = (hex >> 8) & 0xFF;
     int blue = (hex) & 0xFF;
-    
+
     return [UIColor colorWithRed:red/255.f green:green/255.f blue:blue/255.f alpha:1.f];
 }
 
@@ -1655,12 +1715,12 @@ static NSUInteger const kActionSheetTagImagePicker = 1;
 {
     CGFloat red, green, blue, alpha;
     [color getRed:&red green:&green blue:&blue alpha:&alpha];
-    
+
     NSInteger ired, igreen, iblue;
     ired = roundf(red * 255);
     igreen = roundf(green * 255);
     iblue = roundf(blue * 255);
-    
+
     NSUInteger result = (ired << 16) | (igreen << 8) | iblue;
     return result;
 }
@@ -1668,20 +1728,20 @@ static NSUInteger const kActionSheetTagImagePicker = 1;
 + (UIColor *)colorMixedInRGB:(UIColor *)color1 andColor:(UIColor *)color2 percent:(CGFloat)percent
 {
     CGFloat mixSize = 100;
-    
+
     CGFloat r1, g1, b1, r2, g2, b2, r3, g3, b3, empty;
-    
+
     [color1 getRed:&r1 green:&g1 blue:&b1 alpha:&empty];
     [color2 getRed:&r2 green:&g2 blue:&b2 alpha:&empty];
-    
+
     CGFloat mixStepR = (r2 - r1) / mixSize;
     CGFloat mixStepG = (g2 - g1) / mixSize;
     CGFloat mixStepB = (b2 - b1) / mixSize;
-    
+
     r3 = r1 + mixStepR * percent;
     g3 = g1 + mixStepG * percent;
     b3 = b1 + mixStepB * percent;
-    
+
     return [UIColor colorWithRed:r3 green:g3 blue:b3 alpha:1];
 }
 
@@ -1692,15 +1752,15 @@ static NSUInteger const kActionSheetTagImagePicker = 1;
     else
     {
         CGFloat mixSize = 100;
-        
+
         NSArray *array1 = [self colorConvertRGBtoLAB:color1];
         NSArray *array2 = [self colorConvertRGBtoLAB:color2];
-        
+
         NSArray *array3 = [NSArray arrayWithObjects:
                            [NSNumber numberWithFloat:[[array1 objectAtIndex:0] floatValue] - (([[array1 objectAtIndex:0] floatValue] - [[array2 objectAtIndex:0] floatValue]) * (percent / mixSize))],
                            [NSNumber numberWithFloat:[[array1 objectAtIndex:1] floatValue] - (([[array1 objectAtIndex:1] floatValue] - [[array2 objectAtIndex:1] floatValue]) * (percent / mixSize))],
                            [NSNumber numberWithFloat:[[array1 objectAtIndex:2] floatValue] - (([[array1 objectAtIndex:2] floatValue] - [[array2 objectAtIndex:2] floatValue]) * (percent / mixSize))], nil];
-        
+
         return [self colorConvertLABtoRGB:array3];
     }
 }
@@ -1709,13 +1769,13 @@ static NSUInteger const kActionSheetTagImagePicker = 1;
 + (UIColor *)color:(UIColor *)color darkerOnRGB:(NSUInteger)k
 {
     if (k > 255) k = 255;
-    
+
     CGFloat r, g, b, a;
-    
+
     [color getRed:&r green:&g blue:&b alpha:&a];
-    
+
     CGFloat rgbMax = 255.f;
-    
+
     return [UIColor colorWithRed:r-((CGFloat)k/rgbMax) green:g-((CGFloat)k/rgbMax) blue:b-((CGFloat)k/rgbMax) alpha:a];
 }
 
@@ -1723,13 +1783,13 @@ static NSUInteger const kActionSheetTagImagePicker = 1;
 + (UIColor *)color:(UIColor *)color lighterOnRGB:(NSUInteger)k
 {
     if (k > 255) k = 255;
-    
+
     CGFloat r, g, b, a;
-    
+
     [color getRed:&r green:&g blue:&b alpha:&a];
-    
+
     CGFloat rgbMax = 255.f;
-    
+
     return [UIColor colorWithRed:r+((CGFloat)k/rgbMax) green:g+((CGFloat)k/rgbMax) blue:b+((CGFloat)k/rgbMax) alpha:a];
 }
 
@@ -1738,11 +1798,11 @@ static NSUInteger const kActionSheetTagImagePicker = 1;
 {
     if (k < 0.f) k = 0.f;
     if (k > 1.f) k = 1.f;
-    
+
     CGFloat r, g, b, a;
-    
+
     [color getRed:&r green:&g blue:&b alpha:&a];
-    
+
     return [UIColor colorWithRed:r-k green:g-k blue:b-k alpha:a];
 }
 
@@ -1751,11 +1811,11 @@ static NSUInteger const kActionSheetTagImagePicker = 1;
 {
     if (k < 0.f) k = 0.f;
     if (k > 1.f) k = 1.f;
-    
+
     CGFloat r, g, b, a;
-    
+
     [color getRed:&r green:&g blue:&b alpha:&a];
-    
+
     return [UIColor colorWithRed:r+k green:g+k blue:b+k alpha:a];
 }
 
@@ -1764,13 +1824,13 @@ static NSUInteger const kActionSheetTagImagePicker = 1;
 {
     if (percent < 0.f) percent = 0.f;
     if (percent > 100.f) percent = 100.f;
-    
+
     CGFloat r, g, b, a;
-    
+
     [color getRed:&r green:&g blue:&b alpha:&a];
-    
+
     CGFloat percent_ = percent/100.f;
-    
+
     return [UIColor colorWithRed:r-r*percent_ green:g-g*percent_ blue:b-b*percent_ alpha:a];
 }
 
@@ -1779,15 +1839,15 @@ static NSUInteger const kActionSheetTagImagePicker = 1;
 {
     if (percent < 0.f) percent = 0.f;
     if (percent > 100.f) percent = 100.f;
-    
+
     CGFloat r, g, b, a;
-    
+
     [color getRed:&r green:&g blue:&b alpha:&a];
-    
+
     CGFloat rgbMax = 255.f;
-    
+
     CGFloat percent_ = percent/100.f;
-    
+
     return [UIColor colorWithRed:r+(rgbMax-r)*percent_ green:g+(rgbMax-g)*percent_ blue:b+(rgbMax-b)*percent_ alpha:a];
 }
 
@@ -1797,15 +1857,15 @@ static NSUInteger const kActionSheetTagImagePicker = 1;
     CGFloat red2;
     CGFloat green2;
     CGFloat blue2;
-    
+
     [color getRed:&red2 green:&green2 blue:&blue2 alpha:nil];
-    
+
     //convert to XYZ
-    
+
     float red = (float)red2;
     float green = (float)green2;
     float blue = (float)blue2;
-    
+
     // adjusting values
     if (red > 0.04045)
     {
@@ -1813,42 +1873,42 @@ static NSUInteger const kActionSheetTagImagePicker = 1;
         red = pow(red,2.4);
     }
     else red = red/12.92;
-    
+
     if (green > 0.04045)
     {
         green = (green + 0.055)/1.055;
         green = pow(green,2.4);
     }
     else green = green/12.92;
-    
+
     if (blue > 0.04045)
     {
         blue = (blue + 0.055)/1.055;
         blue = pow(blue,2.4);
     }
     else blue = blue/12.92;
-    
+
     red *= 100;
     green *= 100;
     blue *= 100;
-    
+
     //make x, y and z variables
     float x;
     float y;
     float z;
-    
+
     // applying the matrix to finally have XYZ
     x = (red * 0.4124) + (green * 0.3576) + (blue * 0.1805);
     y = (red * 0.2126) + (green * 0.7152) + (blue * 0.0722);
     z = (red * 0.0193) + (green * 0.1192) + (blue * 0.9505);
-    
+
     NSNumber *xNumber = [NSNumber numberWithFloat:x];
     NSNumber *yNumber = [NSNumber numberWithFloat:y];
     NSNumber *zNumber = [NSNumber numberWithFloat:z];
-    
+
     //add them to an array to return.
     NSArray *xyzArray = [NSArray arrayWithObjects:xNumber, yNumber, zNumber, nil];
-    
+
     return xyzArray;
 }
 
@@ -1862,47 +1922,47 @@ static NSUInteger const kActionSheetTagImagePicker = 1;
     NSNumber *xNumber = [xyzArray objectAtIndex:0];
     NSNumber *yNumber = [xyzArray objectAtIndex:1];
     NSNumber *zNumber = [xyzArray objectAtIndex:2];
-    
+
     //make x, y and z variables
     float x = xNumber.floatValue;
     float y = yNumber.floatValue;
     float z = zNumber.floatValue;
-    
+
     //NSLog(@"LGKit: XYZ color - %f, %f, %f", x, y, z);
-    
+
     //then convert XYZ to LAB
-    
+
     x = x/95.047;
     y = y/100;
     z = z/108.883;
-    
+
     // adjusting the values
     if (x > 0.008856) x = powf(x,(1.0/3.0));
     else x = ((7.787 * x) + (16/116));
-    
+
     if (y > 0.008856) y = pow(y,(1.0/3.0));
     else y = ((7.787 * y) + (16/116));
-    
+
     if (z > 0.008856) z = pow(z,(1.0/3.0));
     else z = ((7.787 * z) + (16/116));
-    
+
     //make L, A and B variables
     float l;
     float a;
     float b;
-    
+
     //finally have your l, a, b variables!!!!
     l = ((116 * y) - 16);
     a = 500 * (x - y);
     b = 200 * (y - z);
-    
+
     NSNumber *lNumber = [NSNumber numberWithFloat:l];
     NSNumber *aNumber = [NSNumber numberWithFloat:a];
     NSNumber *bNumber = [NSNumber numberWithFloat:b];
-    
+
     //add them to an array to return.
     NSArray *labArray = [NSArray arrayWithObjects:lNumber, aNumber, bNumber, nil];
-    
+
     return labArray;
 }
 
@@ -1911,38 +1971,38 @@ static NSUInteger const kActionSheetTagImagePicker = 1;
     NSNumber *lNumber = [labArray objectAtIndex:0];
     NSNumber *aNumber = [labArray objectAtIndex:1];
     NSNumber *bNumber = [labArray objectAtIndex:2];
-    
+
     //make l, a and b variables
     float l = lNumber.floatValue;
     float a = aNumber.floatValue;
     float b = bNumber.floatValue;
-    
+
     float delta = 6 / 29;
-    
+
     float y = (l + 16) / 116;
     float x = y + (a / 500);
     float z = y - (b / 200);
-    
+
     if (pow(x, 3.0) > delta) x = pow(x, 3);
     else x = (x - 16 / 116) * 3 * (delta * delta);
-    
+
     if (pow(y, 3.0) > delta) y = pow(y, 3);
     else y = (y - 16 / 116) * 3 * (delta * delta);
-    
+
     if (pow(z, 3.0) > delta) z = pow(z, 3);
     else z = (z - 16 / 116) * 3 * (delta * delta);
-    
+
     x = x * 95.047;
     y = y * 100;
     z = z * 108.883;
-    
+
     NSNumber *xNumber = [NSNumber numberWithFloat:x];
     NSNumber *yNumber = [NSNumber numberWithFloat:y];
     NSNumber *zNumber = [NSNumber numberWithFloat:z];
-    
+
     //add them to an array to return.
     NSArray *xyzArray = [NSArray arrayWithObjects:xNumber, yNumber, zNumber, nil];
-    
+
     return xyzArray;
 }
 
@@ -1951,29 +2011,29 @@ static NSUInteger const kActionSheetTagImagePicker = 1;
     NSNumber *xNumber = [xyzArray objectAtIndex:0];
     NSNumber *yNumber = [xyzArray objectAtIndex:1];
     NSNumber *zNumber = [xyzArray objectAtIndex:2];
-    
+
     //make x, y and z variables
     float x = xNumber.floatValue;
     float y = yNumber.floatValue;
     float z = zNumber.floatValue;
-    
+
     x = x / 100;
     y = y / 100;
     z = z / 100;
-    
+
     float r = x *  3.2406 + y * -1.5372 + z * -0.4986;
     float g = x * -0.9689 + y *  1.8758 + z *  0.0415;
     float b = x *  0.0557 + y * -0.2040 + z *  1.0570;
-    
+
     if (r > 0.0031308) r = 1.055 * pow(r, 1 / 2.4) - 0.055;
     else r = 12.92 * r;
-    
+
     if (g > 0.0031308) g = 1.055 * pow(g, 1 / 2.4) - 0.055;
     else g = 12.92 * g;
-    
+
     if (b > 0.0031308) b = 1.055 * pow(b, 1 / 2.4) - 0.055;
     else b = 12.92 * b;
-    
+
     return [UIColor colorWithRed:r green:g blue:b alpha:1];
 }
 
@@ -1994,10 +2054,10 @@ static NSUInteger const kActionSheetTagImagePicker = 1;
     @"]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-"
     @"9][0-9]?|[a-zA-Z0-9-]*[a-zA-Z0-9]:(?:[\\x01-\\x08\\x0b\\x0c\\x0e-\\x1f\\x21"
     @"-\\x5a\\x53-\\x7f]|\\\\[\\x01-\\x09\\x0b\\x0c\\x0e-\\x7f])+)\\])";
-    
+
     NSPredicate *regExPredicate = [NSPredicate predicateWithFormat:@"SELF MATCHES %@", regExString];
     BOOL isMatchesRegEx = [regExPredicate evaluateWithObject:string];
-    
+
     return isMatchesRegEx;
 }
 
@@ -2012,14 +2072,14 @@ static NSUInteger const kActionSheetTagImagePicker = 1;
     dismissCompletionHandler:(void(^)())dismissCompletionHandler
 {
     return [self emailSendToAddresses:addresses
-                         theme:theme
-                       message:message
-              inViewController:viewController
-                      animated:animated
-                      delegate:nil
-                  setupHandler:setupHandler
-      presentCompletionHandler:presentCompletionHandler
-            completionHandler:completionHandler
+                                theme:theme
+                              message:message
+                     inViewController:viewController
+                             animated:animated
+                             delegate:nil
+                         setupHandler:setupHandler
+             presentCompletionHandler:presentCompletionHandler
+                    completionHandler:completionHandler
              dismissCompletionHandler:dismissCompletionHandler];
 }
 
@@ -2056,28 +2116,28 @@ static NSUInteger const kActionSheetTagImagePicker = 1;
     dismissCompletionHandler:(void(^)())dismissCompletionHandler
 {
     BOOL canSendMail = [MFMailComposeViewController canSendMail];
-    
+
     if (canSendMail)
     {
         _emailViewController = viewController;
         _emailAnimated = animated;
         _emailCompletionHandler = completionHandler;
         _emailDismissCompletionHandler = dismissCompletionHandler;
-        
+
         MFMailComposeViewController *mailViewController = [MFMailComposeViewController new];
         mailViewController.mailComposeDelegate = (delegate ? delegate : self);
         [mailViewController setSubject:theme];
         [mailViewController setToRecipients:addresses];
         [mailViewController setMessageBody:message isHTML:NO];
-        
+
         if (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad)
             mailViewController.modalPresentationStyle = UIModalPresentationFormSheet;
-        
+
         if (setupHandler) setupHandler(mailViewController);
-        
+
         [viewController presentViewController:mailViewController animated:animated completion:presentCompletionHandler];
     }
-    
+
     return canSendMail;
 }
 
@@ -2086,7 +2146,7 @@ static NSUInteger const kActionSheetTagImagePicker = 1;
 - (void)mailComposeController:(MFMailComposeViewController *)controller didFinishWithResult:(MFMailComposeResult)result error:(NSError *)error
 {
     if (_emailCompletionHandler) _emailCompletionHandler(result, error);
-    
+
     [_emailViewController dismissViewControllerAnimated:_emailAnimated completion:_emailDismissCompletionHandler];
 }
 
@@ -2095,10 +2155,10 @@ static NSUInteger const kActionSheetTagImagePicker = 1;
 + (BOOL)phoneNumberIsCorrect:(NSString *)string
 {
     NSString *regExString = @"^[1-9\\+][0-9]{5,15}$";
-    
+
     NSPredicate *regExPredicate = [NSPredicate predicateWithFormat:@"SELF MATCHES %@", regExString];
     BOOL isMatchesRegEx = [regExPredicate evaluateWithObject:string];
-    
+
     return isMatchesRegEx;
 }
 
@@ -2116,7 +2176,7 @@ dismissCompletionHandler:(void(^)())dismissCompletionHandler
                         delegate:nil
                     setupHandler:setupHandler
         presentCompletionHandler:presentCompletionHandler
-            completionHandler:completionHandler
+               completionHandler:completionHandler
         dismissCompletionHandler:dismissCompletionHandler];
 }
 
@@ -2133,7 +2193,7 @@ presentCompletionHandler:(void(^)())presentCompletionHandler
                         delegate:delegate
                     setupHandler:setupHandler
         presentCompletionHandler:presentCompletionHandler
-            completionHandler:nil
+               completionHandler:nil
         dismissCompletionHandler:nil];
 }
 
@@ -2147,21 +2207,21 @@ presentCompletionHandler:(void(^)())presentCompletionHandler
 dismissCompletionHandler:(void(^)())dismissCompletionHandler
 {
     BOOL canSendText = [MFMessageComposeViewController canSendText];
-    
+
     if (canSendText)
     {
         _smsViewController = viewController;
         _smsAnimated = animated;
         _smsCompletionHandler = completionHandler;
         _smsDismissCompletionHandler = dismissCompletionHandler;
-        
+
         MFMessageComposeViewController *messageViewController = [[MFMessageComposeViewController alloc] init];
         messageViewController.messageComposeDelegate = self;
         [messageViewController setBody:text];
-        
+
         if (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad)
             messageViewController.modalPresentationStyle = UIModalPresentationFormSheet;
-        
+
         [viewController presentViewController:messageViewController animated:animated completion:presentCompletionHandler];
     }
 
@@ -2173,7 +2233,7 @@ dismissCompletionHandler:(void(^)())dismissCompletionHandler
 - (void)messageComposeViewController:(MFMessageComposeViewController *)controller didFinishWithResult:(MessageComposeResult)result
 {
     if (_smsCompletionHandler) _smsCompletionHandler(result);
-    
+
     [_smsViewController dismissViewControllerAnimated:_smsAnimated completion:_smsDismissCompletionHandler];
 }
 
@@ -2224,12 +2284,12 @@ dismissCompletionHandler:(void(^)())dismissCompletionHandler
                               dismissCompletionHandler:(void(^)())dismissCompletionHandler
 {
     BOOL sourceTypeAvailable = NO;
-    
+
     if ([UIImagePickerController isSourceTypeAvailable:UIImagePickerControllerSourceTypeCamera] &&
         [UIImagePickerController isSourceTypeAvailable:UIImagePickerControllerSourceTypePhotoLibrary])
     {
         sourceTypeAvailable = YES;
-        
+
         _imagePickerController = [UIImagePickerController new];
         _imagePickerParentViewController = viewController;
         _imagePickerSetupHandler = setupHandler;
@@ -2238,9 +2298,9 @@ dismissCompletionHandler:(void(^)())dismissCompletionHandler
         _imagePickerDismissCompletionHandler = dismissCompletionHandler;
         _imagePickerAnimated = animated;
         _imagePickerDelegate = delegate;
-        
+
         // -----
-        
+
         UIActionSheet *actionSheet = [[UIActionSheet alloc] initWithTitle:nil
                                                                  delegate:self
                                                         cancelButtonTitle:LS(@"Cancel")
@@ -2253,13 +2313,13 @@ dismissCompletionHandler:(void(^)())dismissCompletionHandler
              [UIImagePickerController isSourceTypeAvailable:UIImagePickerControllerSourceTypePhotoLibrary])
     {
         sourceTypeAvailable = YES;
-        
+
         _imagePickerController = [UIImagePickerController new];
-        
+
         UIImagePickerControllerSourceType sourceType = ([UIImagePickerController isSourceTypeAvailable:UIImagePickerControllerSourceTypeCamera] ?
                                                         UIImagePickerControllerSourceTypeCamera :
                                                         UIImagePickerControllerSourceTypePhotoLibrary);
-        
+
         [self imagePickerControllerShowWithSourceType:sourceType
                                      inViewController:viewController
                                              animated:animated
@@ -2269,7 +2329,7 @@ dismissCompletionHandler:(void(^)())dismissCompletionHandler
                                     completionHandler:completionHandler
                              dismissCompletionHandler:dismissCompletionHandler];
     }
-    
+
     return sourceTypeAvailable;
 }
 
@@ -2318,30 +2378,30 @@ dismissCompletionHandler:(void(^)())dismissCompletionHandler
                        dismissCompletionHandler:(void(^)())dismissCompletionHandler
 {
     BOOL sourceTypeAvailable = NO;
-    
+
     if ([UIImagePickerController isSourceTypeAvailable:sourceType])
     {
         sourceTypeAvailable = YES;
-        
+
         _imagePickerParentViewController = viewController;
         _imagePickerCompletionHandler = completionHandler;
         _imagePickerDismissCompletionHandler = dismissCompletionHandler;
         _imagePickerAnimated = animated;
         _imagePickerDelegate = delegate;
-        
+
         // -----
-        
+
         if (!_imagePickerController)
             _imagePickerController = [UIImagePickerController new];
-        
+
         _imagePickerController.sourceType = sourceType;
         _imagePickerController.delegate = (delegate ? delegate : self);
-        
+
         if (setupHandler) setupHandler(_imagePickerController);
-        
+
         [viewController presentViewController:_imagePickerController animated:animated completion:presentCompletionHandler];
     }
-    
+
     return sourceTypeAvailable;
 }
 
@@ -2351,13 +2411,13 @@ dismissCompletionHandler:(void(^)())dismissCompletionHandler
 {
     UIImage *image = [info valueForKey:UIImagePickerControllerOriginalImage];
     image = [LGHelper imageWithOrientationExifFix:image];
-    
+
     if (_imagePickerCompletionHandler) _imagePickerCompletionHandler(image);
-    
+
     [_imagePickerParentViewController dismissViewControllerAnimated:_imagePickerAnimated completion:^(void)
      {
          self.imagePickerController = nil;
-         
+
          if (_imagePickerDismissCompletionHandler) _imagePickerDismissCompletionHandler();
      }];
 }
@@ -2367,7 +2427,7 @@ dismissCompletionHandler:(void(^)())dismissCompletionHandler
     [_imagePickerParentViewController dismissViewControllerAnimated:_imagePickerAnimated completion:^(void)
      {
          self.imagePickerController = nil;
-         
+
          if (_imagePickerDismissCompletionHandler) _imagePickerDismissCompletionHandler();
      }];
 }
@@ -2413,14 +2473,14 @@ dismissCompletionHandler:(void(^)())dismissCompletionHandler
     _documentInteractionDidEndPreviewHandler = didEndPreviewHandler;
     _documentInteractionAnimated = animated;
     _documentInteractionDelegate = delegate;
-    
+
     // -----
-    
+
     _documentInteractionController = [UIDocumentInteractionController interactionControllerWithURL:fileUrl];
     _documentInteractionController.delegate = (delegate ? delegate : self);
-    
+
     if (setupHandler) setupHandler(_documentInteractionController);
-    
+
     return [_documentInteractionController presentPreviewAnimated:animated];
 }
 
@@ -2450,7 +2510,7 @@ dismissCompletionHandler:(void(^)())dismissCompletionHandler
     UIActivityViewController *activityViewController = [[UIActivityViewController alloc] initWithActivityItems:filesUrl
                                                                                          applicationActivities:applicationActivities];
     activityViewController.excludedActivityTypes = excludedActivityTypes;
-    
+
     if (kSystemVersion < 8.0)
     {
         activityViewController.completionHandler = ^(NSString *activityType, BOOL completed)
@@ -2465,9 +2525,9 @@ dismissCompletionHandler:(void(^)())dismissCompletionHandler
             if (completionHandler) completionHandler(activityType, completed, returnedItems, activityError);
         };
     }
-    
+
     if (setupHandler) setupHandler(activityViewController);
-    
+
     [viewController presentViewController:activityViewController animated:animated completion:presentCompletionHandler];
 }
 
@@ -2478,12 +2538,12 @@ dismissCompletionHandler:(void(^)())dismissCompletionHandler
     if (actionSheet.tag == kActionSheetTagImagePicker && buttonIndex != actionSheet.cancelButtonIndex)
     {
         UIImagePickerControllerSourceType sourceType;
-        
+
         if (buttonIndex == 0)
             sourceType = UIImagePickerControllerSourceTypeCamera;
         else
             sourceType = UIImagePickerControllerSourceTypePhotoLibrary;
-        
+
         [self imagePickerControllerShowWithSourceType:sourceType
                                      inViewController:_imagePickerParentViewController
                                              animated:_imagePickerAnimated
@@ -2496,69 +2556,69 @@ dismissCompletionHandler:(void(^)())dismissCompletionHandler
 }
 
 #pragma mark - MWPhotoBrowser
-/*
-- (void)photoBrowserShow
-{
-    MWPhotoBrowser *photoBrowser = [[MWPhotoBrowser alloc] initWithDelegate:self];
-    photoBrowser.displayActionButton = YES;     // Show action button to allow sharing, copying, etc (defaults to YES)
-    photoBrowser.displayNavArrows = YES;        // Whether to display left and right nav arrows on toolbar (defaults to NO)
-    photoBrowser.displaySelectionButtons = NO;  // Whether selection buttons are shown on each image (defaults to NO)
-    photoBrowser.zoomPhotosToFill = YES;        // Images that almost fill the screen will be initially zoomed to fill (defaults to YES)
-    photoBrowser.alwaysShowControls = NO;       // Allows to control whether the bars and controls are always visible or whether they fade away to show the photo full (defaults to NO)
-    photoBrowser.enableGrid = NO;               // Whether to allow the viewing of all the photo thumbnails on a grid (defaults to YES)
-    photoBrowser.startOnGrid = NO;              // Whether to start on the grid of thumbnails instead of the first photo (defaults to NO)
-    photoBrowser.enableSwipeToDismiss = NO;
-    photoBrowser.currentPhotoIndex = 0;
-    
-    for (NSUInteger i=0; i<someNumber; i++)
-    {
-        MWPhoto *photo = [MWPhoto photoWithURL:PhotoURL];
-        photo.caption = Description;
-        
-        [_photosArray addObject:photo];
-    }
-    
-    UINavigationController *photoNavController = [[UINavigationController alloc] initWithRootViewController:photoBrowser];
-    [self.navigationController presentViewController:photoNavController animated:YES completion:nil];
-}
-*/
+
+//- (void)photoBrowserShow
+//{
+//    MWPhotoBrowser *photoBrowser = [[MWPhotoBrowser alloc] initWithDelegate:self];
+//    photoBrowser.displayActionButton = YES;     // Show action button to allow sharing, copying, etc (defaults to YES)
+//    photoBrowser.displayNavArrows = YES;        // Whether to display left and right nav arrows on toolbar (defaults to NO)
+//    photoBrowser.displaySelectionButtons = NO;  // Whether selection buttons are shown on each image (defaults to NO)
+//    photoBrowser.zoomPhotosToFill = YES;        // Images that almost fill the screen will be initially zoomed to fill (defaults to YES)
+//    photoBrowser.alwaysShowControls = NO;       // Allows to control whether the bars and controls are always visible or whether they fade away to show the photo full (defaults to NO)
+//    photoBrowser.enableGrid = NO;               // Whether to allow the viewing of all the photo thumbnails on a grid (defaults to YES)
+//    photoBrowser.startOnGrid = NO;              // Whether to start on the grid of thumbnails instead of the first photo (defaults to NO)
+//    photoBrowser.enableSwipeToDismiss = NO;
+//    photoBrowser.currentPhotoIndex = 0;
+//
+//    for (NSUInteger i=0; i<someNumber; i++)
+//    {
+//        MWPhoto *photo = [MWPhoto photoWithURL:PhotoURL];
+//        photo.caption = Description;
+//
+//        [_photosArray addObject:photo];
+//    }
+//
+//    UINavigationController *photoNavController = [[UINavigationController alloc] initWithRootViewController:photoBrowser];
+//    [self.navigationController presentViewController:photoNavController animated:YES completion:nil];
+//}
+
 #pragma mark Delegate
-/*
-- (NSUInteger)numberOfPhotosInPhotoBrowser:(MWPhotoBrowser *)photoBrowser
-{
-    return _photosArray.count;
-}
 
-- (id<MWPhoto>)photoBrowser:(MWPhotoBrowser *)photoBrowser photoAtIndex:(NSUInteger)index
-{
-    if (index < _photosArray.count)
-        return _photosArray[index];
-    
-    return nil;
-}
-*/
+//- (NSUInteger)numberOfPhotosInPhotoBrowser:(MWPhotoBrowser *)photoBrowser
+//{
+//    return _photosArray.count;
+//}
+//
+//- (id<MWPhoto>)photoBrowser:(MWPhotoBrowser *)photoBrowser photoAtIndex:(NSUInteger)index
+//{
+//    if (index < _photosArray.count)
+//        return _photosArray[index];
+//
+//    return nil;
+//}
+
 #pragma mark - Processor
-/*
-unsigned int countCores()
-{
-    host_basic_info_data_t hostInfo;
-    mach_msg_type_number_t infoCount;
-    
-    infoCount = HOST_BASIC_INFO_COUNT;
-    host_info(mach_host_self(), HOST_BASIC_INFO, (host_info_t)&hostInfo, &infoCount);
-    
-    return (unsigned int)(hostInfo.max_cpus);
-}
 
-unsigned int countCores()
-{
-    size_t len;
-    unsigned int ncpu;
-    
-    len = sizeof(ncpu);
-    sysctlbyname ("hw.ncpu",&ncpu,&len,NULL,0);
-    
-    return ncpu;
-}
-*/
+//unsigned int countCores()
+//{
+//    host_basic_info_data_t hostInfo;
+//    mach_msg_type_number_t infoCount;
+//
+//    infoCount = HOST_BASIC_INFO_COUNT;
+//    host_info(mach_host_self(), HOST_BASIC_INFO, (host_info_t)&hostInfo, &infoCount);
+//
+//    return (unsigned int)(hostInfo.max_cpus);
+//}
+//
+//unsigned int countCores()
+//{
+//    size_t len;
+//    unsigned int ncpu;
+//    
+//    len = sizeof(ncpu);
+//    sysctlbyname ("hw.ncpu",&ncpu,&len,NULL,0);
+//    
+//    return ncpu;
+//}
+
 @end

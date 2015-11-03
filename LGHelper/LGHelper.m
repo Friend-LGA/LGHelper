@@ -199,7 +199,7 @@ static NSUInteger const kActionSheetTagImagePicker = 1;
 
 + (BOOL)isViewEditing:(UIView *)view
 {
-    return [LGHelper firstResponderInView:view];
+    return ([LGHelper firstResponderInView:view] != nil);
 }
 
 #pragma mark - UIScrollView

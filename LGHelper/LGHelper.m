@@ -35,12 +35,15 @@
 /** Need to determine processor cores */
 #include <mach/mach_host.h>
 
-/** Need for MD5 & SHA1 hash */
+/** Need for MD5 & SHA hashes */
 #import <CommonCrypto/CommonDigest.h>
 
 /** Need to determine IP address */
 #include <ifaddrs.h>
 #include <arpa/inet.h>
+
+/** Need for AES crypto */
+#import <CommonCrypto/CommonCryptor.h>
 
 /** Need to determine MIME types */
 @import MobileCoreServices;
@@ -192,6 +195,11 @@ static NSUInteger const kActionSheetTagImagePicker = 1;
     }
 
     return firstResponderView;
+}
+
++ (BOOL)isViewEditing:(UIView *)view
+{
+    return [LGHelper firstResponderInView:view];
 }
 
 #pragma mark - UIScrollView
@@ -1053,58 +1061,226 @@ static NSUInteger const kActionSheetTagImagePicker = 1;
 
 + (NSString *)md5HashFromData:(NSData *)data
 {
-    unsigned char result[CC_MD5_DIGEST_LENGTH];
+    NSUInteger length = CC_MD5_DIGEST_LENGTH;
+
+    unsigned char result[length];
 
     CC_MD5(data.bytes, (CC_LONG)data.length, result);
 
-    return [NSString stringWithFormat:
-            @"%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x",
-            result[0], result[1], result[2], result[3], result[4], result[5], result[6], result[7],
-            result[8], result[9], result[10], result[11], result[12], result[13], result[14],
-            result[15]];
+    NSMutableString *output = [NSMutableString  stringWithCapacity:length * 2];
+
+    for(int i = 0; i < length; i++)
+        [output appendFormat:@"%02x", result[i]];
+
+    return output;
 }
 
 + (NSString *)md5HashFromString:(NSString *)string
 {
+    NSUInteger length = CC_MD5_DIGEST_LENGTH;
+
     const char *cStr = [string UTF8String];
-    unsigned char result[CC_MD5_DIGEST_LENGTH];
+    unsigned char result[length];
 
     CC_MD5(cStr, (CC_LONG)strlen(cStr), result);
 
-    return [NSString stringWithFormat:
-            @"%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x",
-            result[0], result[1], result[2], result[3], result[4], result[5], result[6], result[7],
-            result[8], result[9], result[10], result[11], result[12], result[13], result[14],
-            result[15]];
+    NSMutableString *output = [NSMutableString  stringWithCapacity:length * 2];
+
+    for(int i = 0; i < length; i++)
+        [output appendFormat:@"%02x", result[i]];
+
+    return output;
 }
 
-#pragma mark - SHA1 hash
+#pragma mark - SHA hash
 
-+ (NSString *)sha1HashFromData:(NSData *)data
++ (NSString *)shaHashFromData:(NSData *)data length:(NSUInteger)length
 {
-    unsigned char result[CC_SHA1_DIGEST_LENGTH];
+    unsigned char result[length];
 
     CC_SHA1(data.bytes, (CC_LONG)data.length, result);
 
-    return [NSString stringWithFormat:
-            @"%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x",
-            result[0], result[1], result[2], result[3], result[4], result[5], result[6], result[7],
-            result[8], result[9], result[10], result[11], result[12], result[13], result[14],
-            result[15], result[16], result[17], result[18], result[19]];
+    NSMutableString *output = [NSMutableString  stringWithCapacity:length * 2];
+
+    for(int i = 0; i < length; i++)
+        [output appendFormat:@"%02x", result[i]];
+
+    return output;
+}
+
++ (NSString *)sha1HashFromData:(NSData *)data
+{
+    return [LGHelper shaHashFromData:data length:CC_SHA1_DIGEST_LENGTH];
+}
+
++ (NSString *)sha224HashFromData:(NSData *)data
+{
+    return [LGHelper shaHashFromData:data length:CC_SHA224_DIGEST_LENGTH];
+}
+
++ (NSString *)sha256HashFromData:(NSData *)data
+{
+    return [LGHelper shaHashFromData:data length:CC_SHA256_DIGEST_LENGTH];
+}
+
++ (NSString *)sha384HashFromData:(NSData *)data
+{
+    return [LGHelper shaHashFromData:data length:CC_SHA384_DIGEST_LENGTH];
+}
+
++ (NSString *)sha512HashFromData:(NSData *)data
+{
+    return [LGHelper shaHashFromData:data length:CC_SHA512_DIGEST_LENGTH];
+}
+
++ (NSString *)shaHashFromString:(NSString *)string length:(NSUInteger)length
+{
+    const char *cStr = [string UTF8String];
+    unsigned char result[length];
+
+    CC_SHA1(cStr, (CC_LONG)strlen(cStr), result);
+
+    NSMutableString *output = [NSMutableString  stringWithCapacity:length * 2];
+
+    for(int i = 0; i < length; i++)
+        [output appendFormat:@"%02x", result[i]];
+
+    return output;
 }
 
 + (NSString *)sha1HashFromString:(NSString *)string
 {
-    const char *cStr = [string UTF8String];
-    unsigned char result[CC_SHA1_DIGEST_LENGTH];
+    return [LGHelper shaHashFromString:string length:CC_SHA1_DIGEST_LENGTH];
+}
 
-    CC_SHA1(cStr, (CC_LONG)strlen(cStr), result);
++ (NSString *)sha224HashFromString:(NSString *)string
+{
+    return [LGHelper shaHashFromString:string length:CC_SHA224_DIGEST_LENGTH];
+}
 
-    return [NSString stringWithFormat:
-            @"%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x",
-            result[0], result[1], result[2], result[3], result[4], result[5], result[6], result[7],
-            result[8], result[9], result[10], result[11], result[12], result[13], result[14],
-            result[15], result[16], result[17], result[18], result[19]];
++ (NSString *)sha256HashFromString:(NSString *)string
+{
+    return [LGHelper shaHashFromString:string length:CC_SHA256_DIGEST_LENGTH];
+}
+
++ (NSString *)sha384HashFromString:(NSString *)string
+{
+    return [LGHelper shaHashFromString:string length:CC_SHA384_DIGEST_LENGTH];
+}
+
++ (NSString *)sha512HashFromString:(NSString *)string
+{
+    return [LGHelper shaHashFromString:string length:CC_SHA512_DIGEST_LENGTH];
+}
+
+#pragma mark - XOR Crypto
+
++ (NSString *)xorCryptedString:(NSString *)string key:(NSString *)key
+{
+    NSMutableData *result = [string dataUsingEncoding:NSUTF8StringEncoding].mutableCopy;
+
+    // Get pointer to data to obfuscate
+    char *dataPtr = (char *)[result mutableBytes];
+
+    // Get pointer to key data
+    char *keyData = (char *)[[key dataUsingEncoding:NSUTF8StringEncoding] bytes];
+
+    // Points to each char in sequence in the key
+    char *keyPtr = keyData;
+    int keyIndex = 0;
+
+    // For each character in data, xor with current value in key
+    for (int x = 0; x < string.length; x++)
+    {
+        // Replace current character in data with
+        // current character xor'd with current key value.
+        // Bump each pointer to the next character
+        *dataPtr = *dataPtr ^ *keyPtr;
+        dataPtr++;
+        keyPtr++;
+
+        // If at end of key data, reset count and
+        // set key pointer back to start of key value
+        if (++keyIndex == [key length])
+            keyIndex = 0, keyPtr = keyData;
+    }
+
+    NSString *resultString = [[NSString alloc] initWithData:result encoding:NSUTF8StringEncoding];
+
+    return resultString;
+}
+
+#pragma mark - AES Crypto
+
++ (NSData *)aesCryptedWithKeySize:(NSUInteger)keySize operation:(CCOperation)operation data:(NSData *)data key:(NSString *)key
+{
+    // 'key' should be 32 bytes for AES256, will be null-padded otherwise
+    // 'key' should be 24 bytes for AES192, will be null-padded otherwise
+    // 'key' should be 16 bytes for AES128, will be null-padded otherwise
+    char keyPtr[keySize+1]; // room for terminator (unused)
+    bzero(keyPtr, sizeof(keyPtr)); // fill with zeroes (for padding)
+
+    // fetch key data
+    [key getCString:keyPtr maxLength:sizeof(keyPtr) encoding:NSUTF8StringEncoding];
+
+    NSUInteger dataLength = [data length];
+
+    //See the doc: For block ciphers, the output size will always be less than or
+    //equal to the input size plus the size of one block.
+    //That's why we need to add the size of one block here
+    size_t bufferSize = dataLength + kCCBlockSizeAES128;
+    void *buffer = malloc(bufferSize);
+
+    size_t numBytesEncrypted = 0;
+    CCCryptorStatus cryptStatus = CCCrypt(operation,
+                                          kCCAlgorithmAES128,
+                                          kCCOptionPKCS7Padding,
+                                          keyPtr,
+                                          keySize,
+                                          NULL /* initialization vector (optional) */,
+                                          [data bytes],
+                                          dataLength, /* input */
+                                          buffer,
+                                          bufferSize, /* output */
+                                          &numBytesEncrypted);
+    if (cryptStatus == kCCSuccess)
+    {
+        //the returned NSData takes ownership of the buffer and will free it on deallocation
+        return [NSData dataWithBytesNoCopy:buffer length:numBytesEncrypted];
+    }
+
+    free(buffer); //free the buffer;
+    return nil;
+}
+
++ (NSData *)aes128EncryptedData:(NSData *)data key:(NSString *)key
+{
+    return [LGHelper aesCryptedWithKeySize:kCCKeySizeAES128 operation:kCCEncrypt data:data key:key];
+}
+
++ (NSData *)aes128DecryptedData:(NSData *)data key:(NSString *)key
+{
+    return [LGHelper aesCryptedWithKeySize:kCCKeySizeAES128 operation:kCCDecrypt data:data key:key];
+}
+
++ (NSData *)aes192EncryptedData:(NSData *)data key:(NSString *)key
+{
+    return [LGHelper aesCryptedWithKeySize:kCCKeySizeAES192 operation:kCCEncrypt data:data key:key];
+}
+
++ (NSData *)aes192DecryptedData:(NSData *)data key:(NSString *)key
+{
+    return [LGHelper aesCryptedWithKeySize:kCCKeySizeAES192 operation:kCCDecrypt data:data key:key];
+}
+
++ (NSData *)aes256EncryptedData:(NSData *)data key:(NSString *)key
+{
+    return [LGHelper aesCryptedWithKeySize:kCCKeySizeAES256 operation:kCCEncrypt data:data key:key];
+}
+
++ (NSData *)aes256DecryptedData:(NSData *)data key:(NSString *)key
+{
+    return [LGHelper aesCryptedWithKeySize:kCCKeySizeAES256 operation:kCCDecrypt data:data key:key];
 }
 
 #pragma mark - Open URL's

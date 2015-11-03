@@ -416,6 +416,7 @@ LGInternetStatus;
 
 + (UIView *)superviewForView:(UIView *)view withClass:(Class)superViewClass;
 + (UIView *)firstResponderInView:(UIView *)view;
++ (BOOL)isViewEditing:(UIView *)view;
 
 #pragma mark - UIScrollView
 
@@ -497,10 +498,32 @@ LGInternetStatus;
 + (NSString *)md5HashFromData:(NSData *)data;
 + (NSString *)md5HashFromString:(NSString *)string;
 
-#pragma mark - SHA1 hash
+#pragma mark - SHA hash
 
 + (NSString *)sha1HashFromData:(NSData *)data;
++ (NSString *)sha224HashFromData:(NSData *)data;
++ (NSString *)sha256HashFromData:(NSData *)data;
++ (NSString *)sha384HashFromData:(NSData *)data;
++ (NSString *)sha512HashFromData:(NSData *)data;
+
 + (NSString *)sha1HashFromString:(NSString *)string;
++ (NSString *)sha224HashFromString:(NSString *)string;
++ (NSString *)sha256HashFromString:(NSString *)string;
++ (NSString *)sha384HashFromString:(NSString *)string;
++ (NSString *)sha512HashFromString:(NSString *)string;
+
+#pragma mark - XOR Crypto
+
++ (NSString *)xorCryptedString:(NSString *)string key:(NSString *)key;
+
+#pragma mark - AES Crypto
+
++ (NSData *)aes128EncryptedData:(NSData *)data key:(NSString *)key;
++ (NSData *)aes128DecryptedData:(NSData *)data key:(NSString *)key;
++ (NSData *)aes192EncryptedData:(NSData *)data key:(NSString *)key;
++ (NSData *)aes192DecryptedData:(NSData *)data key:(NSString *)key;
++ (NSData *)aes256EncryptedData:(NSData *)data key:(NSString *)key;
++ (NSData *)aes256DecryptedData:(NSData *)data key:(NSString *)key;
 
 #pragma mark - Open URL's
 

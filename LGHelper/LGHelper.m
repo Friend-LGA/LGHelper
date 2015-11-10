@@ -26,6 +26,16 @@
 //  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 //  SOFTWARE.
 //
+//
+//  GZIP
+//  Copyright (c) 2012 Charcoal Design
+//  https://github.com/nicklockwood/GZIP
+//
+//
+//  Image with mask, color at pixel
+//  Copyright (c) 2009 Ole Begemann
+//  https://github.com/ole/OBShapedButton
+//
 
 #import "LGHelper.h"
 
@@ -45,13 +55,17 @@
 /** Need for AES crypto */
 #import <CommonCrypto/CommonCryptor.h>
 
+/** Need for GZIP */
+#import <zlib.h>
+
 /** Need to determine MIME types */
 @import MobileCoreServices;
 
 @import EventKit;
 @import AddressBook;
 
-static NSUInteger const kActionSheetTagImagePicker = 1;
+static NSUInteger const kLGHelperTagActionSheetImagePicker = 1;
+static NSUInteger const kLGHelperGZIPChunkSize = 16384;
 
 @interface LGHelper () <UIActionSheetDelegate, MFMailComposeViewControllerDelegate, MFMessageComposeViewControllerDelegate, UIImagePickerControllerDelegate, UINavigationControllerDelegate, UIDocumentInteractionControllerDelegate>
 
@@ -789,55 +803,19 @@ static NSUInteger const kActionSheetTagImagePicker = 1;
     return capturedImage;
 }
 
-#pragma mark - Reachability
-
-+ (Reachability *)reachabilityAddObserver:(id)target selector:(SEL)selector
-{
-    Reachability *reachability = [Reachability reachabilityForInternetConnection];
-    [reachability startNotifier];
-    [[NSNotificationCenter defaultCenter] addObserver:target selector:selector name:kReachabilityChangedNotification object:reachability];
-
-    return reachability;
-}
-
-+ (Reachability *)reachabilityForHostName:(NSString *)hostName addObserver:(id)target selector:(SEL)selector
-{
-    Reachability *reachability = [Reachability reachabilityWithHostName:hostName];
-    [reachability startNotifier];
-    [[NSNotificationCenter defaultCenter] addObserver:target selector:selector name:kReachabilityChangedNotification object:reachability];
-
-    return reachability;
-}
-
-+ (void)reachability:(Reachability *)reachability removeObserver:(id)target
-{
-    [reachability stopNotifier];
-    [[NSNotificationCenter defaultCenter] removeObserver:target name:kReachabilityChangedNotification object:reachability];
-}
-
-+ (NetworkStatus)reachabilityStatus
-{
-    return [[Reachability reachabilityForInternetConnection] currentReachabilityStatus];
-}
-
-+ (NetworkStatus)reachabilityStatusForHostName:(NSString *)hostName
-{
-    return [[Reachability reachabilityWithHostName:hostName] currentReachabilityStatus];
-}
-
 #pragma mark - Keyboard Notifications
 
 + (void)keyboardNotificationsAddToTarget:(id)target selector:(SEL)selector
 {
     [[NSNotificationCenter defaultCenter] addObserver:target selector:selector name:UIKeyboardWillShowNotification object:nil];
-//    [[NSNotificationCenter defaultCenter] addObserver:target selector:selector name:UIKeyboardWillChangeFrameNotification object:nil];
+    //    [[NSNotificationCenter defaultCenter] addObserver:target selector:selector name:UIKeyboardWillChangeFrameNotification object:nil];
     [[NSNotificationCenter defaultCenter] addObserver:target selector:selector name:UIKeyboardWillHideNotification object:nil];
 }
 
 + (void)keyboardNotificationsRemoveFromTarget:(id)target selector:(SEL)selector
 {
     [[NSNotificationCenter defaultCenter] removeObserver:target name:UIKeyboardWillShowNotification object:nil];
-//    [[NSNotificationCenter defaultCenter] removeObserver:target name:UIKeyboardWillChangeFrameNotification object:nil];
+    //    [[NSNotificationCenter defaultCenter] removeObserver:target name:UIKeyboardWillChangeFrameNotification object:nil];
     [[NSNotificationCenter defaultCenter] removeObserver:target name:UIKeyboardWillHideNotification object:nil];
 }
 
@@ -903,7 +881,7 @@ static NSUInteger const kActionSheetTagImagePicker = 1;
 - (void)keyboardNotification:(NSNotification *)notification
 {
     [LGHelper keyboardAnimateWithNotificationUserInfo:notification.userInfo
-                                   animations:^(CGFloat keyboardHeight)
+                                           animations:^(CGFloat keyboardHeight)
      {
          for (UIScrollView *scrollView in LGHelperShared.keyboardNotificationsScrollViews)
          {
@@ -1175,9 +1153,9 @@ static NSUInteger const kActionSheetTagImagePicker = 1;
 
 #pragma mark - XOR Crypto
 
-+ (NSString *)xorCryptedString:(NSString *)string key:(NSString *)key
++ (NSData *)xorCryptedData:(NSData *)data key:(NSString *)key
 {
-    NSMutableData *result = [string dataUsingEncoding:NSUTF8StringEncoding].mutableCopy;
+    NSMutableData *result = data.mutableCopy;
 
     // Get pointer to data to obfuscate
     char *dataPtr = (char *)[result mutableBytes];
@@ -1190,7 +1168,7 @@ static NSUInteger const kActionSheetTagImagePicker = 1;
     int keyIndex = 0;
 
     // For each character in data, xor with current value in key
-    for (int x = 0; x < string.length; x++)
+    for (int x = 0; x < data.length; x++)
     {
         // Replace current character in data with
         // current character xor'd with current key value.
@@ -1205,7 +1183,16 @@ static NSUInteger const kActionSheetTagImagePicker = 1;
             keyIndex = 0, keyPtr = keyData;
     }
 
-    NSString *resultString = [[NSString alloc] initWithData:result encoding:NSUTF8StringEncoding];
+    return result;
+}
+
++ (NSString *)xorCryptedString:(NSString *)string key:(NSString *)key
+{
+    NSData *data = [string dataUsingEncoding:NSUTF8StringEncoding];
+
+    NSData *resultData = [LGHelper xorCryptedData:data key:key];
+
+    NSString *resultString = [[NSString alloc] initWithData:resultData encoding:NSUTF8StringEncoding];
 
     return resultString;
 }
@@ -1281,6 +1268,93 @@ static NSUInteger const kActionSheetTagImagePicker = 1;
 + (NSData *)aes256DecryptedData:(NSData *)data key:(NSString *)key
 {
     return [LGHelper aesCryptedWithKeySize:kCCKeySizeAES256 operation:kCCDecrypt data:data key:key];
+}
+
+#pragma mark - GZIP
+
++ (NSData *)gZippedData:(NSData *)data compressionLevel:(float)level
+{
+    if (data.length)
+    {
+        z_stream stream;
+        stream.zalloc = Z_NULL;
+        stream.zfree = Z_NULL;
+        stream.opaque = Z_NULL;
+        stream.avail_in = (uint)[data length];
+        stream.next_in = (Bytef *)[data bytes];
+        stream.total_out = 0;
+        stream.avail_out = 0;
+
+        int compression = (level < 0.0f)? Z_DEFAULT_COMPRESSION: (int)(roundf(level * 9));
+
+        if (deflateInit2(&stream, compression, Z_DEFLATED, 31, 8, Z_DEFAULT_STRATEGY) == Z_OK)
+        {
+            NSMutableData *mutableData = [NSMutableData dataWithLength:kLGHelperGZIPChunkSize];
+
+            while (stream.avail_out == 0)
+            {
+                if (stream.total_out >= [mutableData length])
+                    mutableData.length += kLGHelperGZIPChunkSize;
+
+                stream.next_out = (uint8_t *)[mutableData mutableBytes] + stream.total_out;
+                stream.avail_out = (uInt)([mutableData length] - stream.total_out);
+                deflate(&stream, Z_FINISH);
+            }
+
+            deflateEnd(&stream);
+            mutableData.length = stream.total_out;
+
+            return mutableData;
+        }
+    }
+
+    return nil;
+}
+
++ (NSData *)gZippedData:(NSData *)data
+{
+    return [LGHelper gZippedData:data compressionLevel:-1.f];
+}
+
++ (NSData *)gUnZippedData:(NSData *)data
+{
+    if (data.length)
+    {
+        z_stream stream;
+        stream.zalloc = Z_NULL;
+        stream.zfree = Z_NULL;
+        stream.avail_in = (uint)[data length];
+        stream.next_in = (Bytef *)[data bytes];
+        stream.total_out = 0;
+        stream.avail_out = 0;
+
+        if (inflateInit2(&stream, 47) == Z_OK)
+        {
+            NSMutableData *mutableData = [NSMutableData dataWithLength:(NSUInteger)([data length] * 1.5)];
+
+            int status = Z_OK;
+
+            while (status == Z_OK)
+            {
+                if (stream.total_out >= [mutableData length])
+                    mutableData.length += [data length] / 2;
+
+                stream.next_out = (uint8_t *)[mutableData mutableBytes] + stream.total_out;
+                stream.avail_out = (uInt)([mutableData length] - stream.total_out);
+                status = inflate(&stream, Z_SYNC_FLUSH);
+            }
+
+            if (inflateEnd(&stream) == Z_OK &&
+                status == Z_STREAM_END)
+            {
+                mutableData.length = stream.total_out;
+
+                return mutableData;
+            }
+        }
+    }
+
+    return nil;
 }
 
 #pragma mark - Open URL's
@@ -2482,7 +2556,7 @@ dismissCompletionHandler:(void(^)())dismissCompletionHandler
                                                         cancelButtonTitle:LS(@"Cancel")
                                                    destructiveButtonTitle:nil
                                                         otherButtonTitles:LS(@"Take photo"), LS(@"Choose from gallery"), nil];
-        actionSheet.tag = kActionSheetTagImagePicker;
+        actionSheet.tag = kLGHelperTagActionSheetImagePicker;
         [actionSheet showInView:view];
     }
     else if ([UIImagePickerController isSourceTypeAvailable:UIImagePickerControllerSourceTypeCamera] ||
@@ -2689,10 +2763,12 @@ dismissCompletionHandler:(void(^)())dismissCompletionHandler
 
     if (kSystemVersion < 8.0)
     {
+#if __IPHONE_OS_VERSION_MIN_REQUIRED < __IPHONE_8_0
         activityViewController.completionHandler = ^(NSString *activityType, BOOL completed)
         {
             if (completionHandler) completionHandler(activityType, completed, nil, nil);
         };
+#endif
     }
     else
     {
@@ -2711,7 +2787,7 @@ dismissCompletionHandler:(void(^)())dismissCompletionHandler
 
 - (void)actionSheet:(UIActionSheet *)actionSheet clickedButtonAtIndex:(NSInteger)buttonIndex
 {
-    if (actionSheet.tag == kActionSheetTagImagePicker && buttonIndex != actionSheet.cancelButtonIndex)
+    if (actionSheet.tag == kLGHelperTagActionSheetImagePicker && buttonIndex != actionSheet.cancelButtonIndex)
     {
         UIImagePickerControllerSourceType sourceType;
 
@@ -2730,6 +2806,42 @@ dismissCompletionHandler:(void(^)())dismissCompletionHandler
                              dismissCompletionHandler:_imagePickerDismissCompletionHandler];
     }
 }
+
+#pragma mark - Reachability
+
+//+ (Reachability *)reachabilityAddObserver:(id)target selector:(SEL)selector
+//{
+//    Reachability *reachability = [Reachability reachabilityForInternetConnection];
+//    [reachability startNotifier];
+//    [[NSNotificationCenter defaultCenter] addObserver:target selector:selector name:kReachabilityChangedNotification object:reachability];
+//
+//    return reachability;
+//}
+//
+//+ (Reachability *)reachabilityForHostName:(NSString *)hostName addObserver:(id)target selector:(SEL)selector
+//{
+//    Reachability *reachability = [Reachability reachabilityWithHostName:hostName];
+//    [reachability startNotifier];
+//    [[NSNotificationCenter defaultCenter] addObserver:target selector:selector name:kReachabilityChangedNotification object:reachability];
+//
+//    return reachability;
+//}
+//
+//+ (void)reachability:(Reachability *)reachability removeObserver:(id)target
+//{
+//    [reachability stopNotifier];
+//    [[NSNotificationCenter defaultCenter] removeObserver:target name:kReachabilityChangedNotification object:reachability];
+//}
+//
+//+ (NetworkStatus)reachabilityStatus
+//{
+//    return [[Reachability reachabilityForInternetConnection] currentReachabilityStatus];
+//}
+//
+//+ (NetworkStatus)reachabilityStatusForHostName:(NSString *)hostName
+//{
+//    return [[Reachability reachabilityWithHostName:hostName] currentReachabilityStatus];
+//}
 
 #pragma mark - MWPhotoBrowser
 

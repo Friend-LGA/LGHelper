@@ -29,7 +29,6 @@
 
 #import "NSString+LGHelper.h"
 #import "NSMutableString+LGHelper.h"
-#import "NSURL+LGHelper.h"
 #import "NSData+LGHelper.h"
 #import "NSDictionary+LGHelper.h"
 #import "NSArray+LGHelper.h"

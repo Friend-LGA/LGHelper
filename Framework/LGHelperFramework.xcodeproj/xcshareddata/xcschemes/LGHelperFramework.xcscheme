@@ -14,10 +14,10 @@
             buildForAnalyzing = "YES">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "4AB0B24E1BF237F90083A7D8"
+               BlueprintIdentifier = "4AF138871BF37CB20037B073"
                BuildableName = "LGHelperFramework.framework"
                BlueprintName = "LGHelperFramework"
-               ReferencedContainer = "container:LGHelper.xcodeproj">
+               ReferencedContainer = "container:LGHelperFramework.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
@@ -45,10 +45,10 @@
       <MacroExpansion>
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "4AB0B24E1BF237F90083A7D8"
+            BlueprintIdentifier = "4AF138871BF37CB20037B073"
             BuildableName = "LGHelperFramework.framework"
             BlueprintName = "LGHelperFramework"
-            ReferencedContainer = "container:LGHelper.xcodeproj">
+            ReferencedContainer = "container:LGHelperFramework.xcodeproj">
          </BuildableReference>
       </MacroExpansion>
       <AdditionalOptions>
@@ -63,10 +63,10 @@
       <MacroExpansion>
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "4AB0B24E1BF237F90083A7D8"
+            BlueprintIdentifier = "4AF138871BF37CB20037B073"
             BuildableName = "LGHelperFramework.framework"
             BlueprintName = "LGHelperFramework"
-            ReferencedContainer = "container:LGHelper.xcodeproj">
+            ReferencedContainer = "container:LGHelperFramework.xcodeproj">
          </BuildableReference>
       </MacroExpansion>
    </ProfileAction>

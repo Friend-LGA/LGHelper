@@ -2,7 +2,7 @@
 //  LGHelperFramework.h
 //  LGHelperFramework
 //
-//  Created by Grigory Lutkov on 10.11.15.
+//  Created by Grigory Lutkov on 11.11.15.
 //  Copyright © 2015 Grigory Lutkov. All rights reserved.
 //
 
